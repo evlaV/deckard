@@ -1,0 +1,27 @@
+From b3445acb5bcbd9908f73d239123e9fc81eade48a Mon Sep 17 00:00:00 2001
+From: Julian Bouzas <julian.bouzas@collabora.com>
+Date: Thu, 24 Jul 2025 14:25:46 -0400
+Subject: [PATCH 5/6] monitor: alsa: Dont set 'node.dont-remix' property to
+ loopback devices
+
+This is really not needed and allows the ALSA loopback adapters to be configured
+with any number of channels.
+---
+ src/scripts/monitors/alsa.lua | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/src/scripts/monitors/alsa.lua b/src/scripts/monitors/alsa.lua
+index c08bfe34..caf4463e 100644
+--- a/src/scripts/monitors/alsa.lua
++++ b/src/scripts/monitors/alsa.lua
+@@ -78,7 +78,6 @@ function CreateLoopback (properties)
+     ["audio.channels"] = channels,
+     ["audio.position"] = position,
+     ["alsa.loopback"] = true,
+-    ["stream.dont-remix"] = true,
+     ["node.passive"] = true,
+     ["node.dont-fallback"] = true,
+     ["node.linger"] = true,
+-- 
+2.55.0
+

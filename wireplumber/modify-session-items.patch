@@ -1,0 +1,32 @@
+diff --git a/src/scripts/node/create-item.lua b/src/scripts/node/create-item.lua
+index 2fb96c3f..e6fc96b5 100644
+--- a/src/scripts/node/create-item.lua
++++ b/src/scripts/node/create-item.lua
+@@ -80,6 +80,7 @@ AsyncEventHook {
+       next = "register",
+       execute = function (event, transition)
+         local node = event:get_subject ()
++        local extra_si_properties = event:get_data ("extra-si-properties")
+         local id = node.id
+         local item
+         local item_type
+@@ -97,9 +98,17 @@ AsyncEventHook {
+         item = SessionItem (item_type)
+         items [id] = item
+ 
++        -- Create the config properties and add the extra ones
++        local config_props = configProperties (node)
++        if extra_si_properties ~= nil then
++          for k, v in pairs(extra_si_properties) do
++            config_props [k] = v
++          end
++        end
++
+         -- configure item
+-        if not item:configure (configProperties (node)) then
+-          transition:return_error ("failed to configure item for node "
++        if not item:configure (config_props) then
++	  transition:return_error ("failed to configure item for node "
+               .. tostring (id))
+           return
+         end
