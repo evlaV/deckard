@@ -1,0 +1,92 @@
+# This so that our mesa builds always happen in lockstep
+source ../deckard-mesa-linux-aarch64/mesa_common.pkgbuild
+
+pkgbase='deckard-mesa-linux-aarch64'
+pkgname=('deckard-mesa-linux-aarch64' 'deckard-mesa-linux-aarch64-assert')
+pkgdesc="An open-source implementation of the OpenGL specification, native aarch64 build"
+pkgver=${_pkgver:-1}
+pkgrel=${_pkgrel:-1}
+arch=('aarch64')
+makedepends=('git' 'openssh' 'python-mako' 'python-packaging' 'libxml2' 'libx11' 'xorgproto'
+             'python>=3.11' 'python-ply' 'python-yaml' 'wayland-protocols' 'elfutils'
+             'libclc' 'clang' 'libxrandr' 'systemd' 'valgrind' 'glslang'
+             'directx-headers' 'cmake' 'meson' 'bison' 'flex' 'libconfig')
+depends=('libdrm' 'wayland' 'libxshmfence' 'libelf' 'libdisplay-info'
+         'libglvnd' 'zstd' 'vulkan-icd-loader' 'lua' 'libconfig')
+provides=('mesa' 'mesa-libgl' 'opengl-driver')
+conflicts=('mesa' 'mesa-libgl')
+replaces=('mesa-libgl')
+url="https://www.mesa3d.org/"
+license=('custom')
+options=('!lto')
+source=("mesa::git+https://github.com/evlav/deckard-mesa.git#commit=$_commit"
+        "LICENSE")
+sha512sums=('SKIP'
+            'f9f0d0ccf166fe6cb684478b6f1e1ab1f2850431c06aa041738563eb1808a004e52cdec823c103c9e180f03ffc083e95974d291353f0220fe52ae6d4897fecc7')
+
+build() {
+  # Deckard:
+  #  - Allow wrap-based downloading of dependencies, because things like
+  #    perfetto are rather difficult to build for mesa, and we need them.
+  #    We will pass fixing these build recipes off to Collabora.
+  #  - Only build zink and freedreno
+  #  - Enable lots of tools like perfetto, valgrind
+  #  - Create `-assert` build
+  MESON_OPTIONS=(
+    --wrap-mode=default
+    -D android-libbacktrace=disabled
+    -D android-libperfetto=disabled
+    -D gallium-drivers=zink
+    -D gallium-va=disabled
+    -D gallium-mediafoundation=disabled
+    -D gbm=enabled
+    -D glvnd=enabled
+    -D glx-direct=true
+    -D glx=auto
+    -D gpuvis=true
+    -D llvm=disabled
+    -D libunwind=disabled
+    -D microsoft-clc=disabled
+    -D perfetto=true
+    -D platforms=x11,wayland
+    -D tools=freedreno,drm-shim
+    -D valgrind=enabled
+    -D vulkan-drivers=freedreno
+    -D vulkan-layers=vram-report-limit
+    -D tu-build-id="${_tu_build_id}"
+    -Dc_args="-march=armv8.2-a"
+    -Dcpp_args="-march=armv8.2-a"
+  )
+
+  # Normal build
+  arch-meson mesa build \
+    --buildtype=release \
+    -D b_ndebug=true \
+    "${MESON_OPTIONS[@]}"
+
+  # Print config
+  meson configure build
+  ninja -C build
+
+  # Assert build
+  arch-meson mesa build_assert \
+    --buildtype=debugoptimized \
+    -D b_ndebug=false \
+    "${MESON_OPTIONS[@]}"
+  meson configure build_assert
+  ninja -C build_assert
+}
+
+package_deckard-mesa-linux-aarch64() {
+  conflicts+=( 'deckard-mesa-linux-aarch64-assert' )
+  options+=( 'debug' 'strip' )
+  DESTDIR="${pkgdir}" meson install -C build
+  install -m644 -Dt "${pkgdir}/usr/share/licenses/${pkgbase}" LICENSE
+}
+
+package_deckard-mesa-linux-aarch64-assert() {
+  conflicts+=( 'deckard-mesa-linux-aarch64' )
+  options+=( '!debug' '!strip' )
+  DESTDIR="${pkgdir}" meson install -C build_assert
+  install -m644 -Dt "${pkgdir}/usr/share/licenses/${pkgbase}" LICENSE
+}
