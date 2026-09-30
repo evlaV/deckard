@@ -1,0 +1,32 @@
+# Maintainer: Anatol Pomozov
+# Contributor: Tommaso Sardelli <lacapannadelloziotom at gmail dot com>
+
+pkgname=bpftrace
+pkgver=0.23.5
+pkgrel=3
+pkgdesc='High-level tracing language for Linux eBPF'
+arch=('aarch64')
+url='https://github.com/iovisor/bpftrace'
+license=('Apache-2.0')
+depends=('glibc' 'gcc-libs' 'libelf' 'zlib' 'llvm-libs' 'clang' 'bcc' 'libbpf' 'libpcap' 'zstd' 'lldb')
+makedepends=('binutils' 'cmake' 'llvm' 'git' 'linux-headers' 'ninja' 'gtest' 'cereal'
+             'asciidoctor' 'xxd')
+options=('!strip' '!debug')
+source=("https://github.com/iovisor/bpftrace/archive/v$pkgver/bpftrace-$pkgver.tar.gz")
+sha512sums=('1e040bce7636da4e2ebeffc1c8fc3944feb26ef2c371ff287b323123ef89b839fbaa492a61e8164efedc7579e73aebc489f168ecad903f3cac6144d8bbc4b6f1')
+
+build() {
+  cmake -S bpftrace-$pkgver -B build -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DUSE_SYSTEM_BPF_BCC=ON
+  cmake --build build
+}
+
+package() {
+  depends+=(
+    'binutils' 'libsframe.so'
+  )
+
+  DESTDIR="$pkgdir" cmake --install build
+}
