@@ -1,0 +1,112 @@
+#!/bin/bash
+
+set -eu
+
+##
+## This script must match the API the temporary Steam UI updater wants of us, including this file
+## Please note that this script is now deprecated! The Steam client is migrating to the new
+## atomic update D-Bus API, and developers are encouraged to use `atomupd-manager`.
+##
+
+unset tmpdir
+cleanup() { rm -rf /tmp/steamos-update.pid; [[ -z ${tmpdir-} ]] || rm -rf --one-file-system -- "$tmpdir"; }
+trap cleanup EXIT
+touch /tmp/steamos-update.pid
+
+info() { echo >&2 "$*"; }
+
+checkmode=""
+error=""
+beta=""
+debug=""
+duplicate_detection=""
+
+## XXX Frame and Fremont-OOBE Hack
+# Steam is checking for updates on startup, and failing, causing atomupd to start.  This thwarts its NTP-sync check,
+# which times out, causing the actual update check immediately after getting wifi to not have sync'd NTP!
+if nm-online -t 0 >&2 && [[ $(/usr/bin/timedatectl show --property=NTP --value) = yes ]]; then
+  info "Waiting up to 20s for NTP sync"
+  /usr/bin/timeout 20s /usr/lib/systemd/systemd-time-wait-sync >&2 || info "Failed to wait for NTP sync"
+fi
+
+while [[ $# -ge 1 ]]; do
+  case "$1" in
+    "check") checkmode=1 ;;
+    "--beta") beta=1 ;;
+    "-d") debug=1 ;;
+    "--enable-duplicate-detection") duplicate_detection=1 ;;
+    "--supports-duplicate-detection")
+      info "This script supports the duplicate detection option"
+      exit 0
+    ;;
+    *)
+      error=1
+      info "Unknown option \"$1\""
+    ;;
+  esac
+  shift
+done
+
+if [[ -n $error ]]; then
+  echo >&2 "!! Usage: $0 [check]"
+  exit 1
+fi
+
+# Do this check only if explicitly enabled to avoid returning a new exit code
+# that the Steam client doesn't support yet
+if [[ -n ${checkmode-} && -n ${duplicate_detection-} ]]; then
+  status=$(atomupd-manager get-update-status)
+  if [[ "$status" = "successful" ]]; then
+    info "An update has already been applied, please reboot to enable it"
+    exit 8
+  fi
+fi
+
+atomupd_args=()
+[[ -n $debug ]] && atomupd_args+=(--verbose)
+
+if [[ -n $beta ]]; then
+  # The Steam client is not expected to use this option because it has been deprecated
+  # a long time ago. We keep it around to err on the safe side. However it is now a no-op.
+  info "'--beta' is deprecated; use 'steamos-select-branch beta' then 'steamos-update'"
+fi
+
+check=$(atomupd-manager check)
+if [[ $? != 0 ]]; then
+  info "Failed to check for updates"
+  exit 1 # Unknown failure
+fi
+if [[ "$check" = "No update available" ]]; then
+  info "No update available"
+  exit 7
+fi
+
+# Extract the buildid from the output
+id_line=${check#*ID: }
+buildid=${id_line/ */}
+
+# Quick sanity check
+if [[ ! "$buildid" =~ ^[0-9\.]+$ ]]; then
+  info "Failed to check for updates"
+  exit 1 # Unknown failure
+fi
+
+# Update is available
+info "Update available"
+
+# Check mode, return success for update available
+if [[ -n ${checkmode-} ]]; then
+  echo "$buildid"
+  exit 0
+fi
+
+# Not check mode. Update!
+do_atomupd() { atomupd-manager "${atomupd_args[@]}" update "$buildid"; }
+
+if do_atomupd; then
+  info "Applied an update"
+  exit 0
+else
+  info "Update failed"
+  exit 1
+fi

@@ -1,0 +1,3 @@
+# Upon a USB-C cable plug in event, run this script with the name of the device
+ACTION=="add", SUBSYSTEM=="typec", ENV{DEVTYPE}=="typec_partner", RUN+="/usr/share/deckard/typec-plug-event.sh %k add"
+ACTION=="remove", SUBSYSTEM=="typec", ENV{DEVTYPE}=="typec_partner", RUN+="/usr/share/deckard/typec-plug-event.sh %k remove"

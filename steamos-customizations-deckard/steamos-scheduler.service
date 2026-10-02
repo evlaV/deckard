@@ -1,0 +1,12 @@
+[Unit]
+Description=Set CPU frequency governor and scheduler
+After=steamos-manager.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/default/steamos-scheduler
+ExecStart=/bin/bash -c "steamosctl set-cpu-scaling-governor ${GOVERNOR}; steamosctl set-cpu-scheduler ${SCHEDULER}"
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target

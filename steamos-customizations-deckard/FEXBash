@@ -1,0 +1,24 @@
+#!/bin/bash
+
+export STEAM_COMPAT_DATA_PATH=$XDG_RUNTIME_DIR/fex-tmp/
+STEAMPATH=/home/steamos/.steam
+STEAMSDKPATH=$STEAMPATH/sdkarm64
+STEAMBINPATH=$STEAMPATH/binarm64
+
+FEXPATH=$STEAMPATH/steam/steamapps/common/FEX-Emu
+SLRPATH=$STEAMPATH/steam/steamapps/common/SteamLinuxRuntime_4
+
+if [ ! -d "$FEXPATH" ]; then
+ echo "$FEXPATH not exist"
+ exit
+fi
+
+if [ ! -d "$SLRPATH" ]; then
+ echo "$SLRPATH not exist"
+ exit
+fi
+
+$STEAMSDKPATH/steam-launch-wrapper -- \
+        $STEAMBINPATH/reaper SteamLaunch -- \
+        $FEXPATH/fex-compat-tool waitforexitandrun -- \
+        $SLRPATH/run --devel -- /usr/bin/sh -c $FEXPATH/usr/bin/FEXBash "$@"
