@@ -5,7 +5,7 @@ pkgname=steamos-customizations-deckard
 _srctag=deckard-20260924.1
 _srcver=${_srctag#deckard-}
 pkgver=${_srcver//-/.}
-pkgrel=2
+pkgrel=3
 pkgdesc='SteamOS customizations (Deckard fork) - This package installs various SteamOS-specific files'
 arch=('any')
 url='http://repo.steampowered.com'
@@ -108,7 +108,7 @@ sha256sums=('SKIP'
             'fb8237ad74d9adbd3dbd074ab51992fe8d50187cbc3954bc97ac29e1485da4c9'
             '6fd9ff9e6e5f434c171f2f0fe127b70e387ae165cbf0b328b35e0d0bcfc1aa69'
             '8a907f46e455bf26d6bf2f2c09cf28e4aed6e2105a74c870a3d61c49b554e2d1'
-            '0acf47ed0a914ff0b2b685051078cc3340490bbabc3f1ee7dcf8e083c4b9d46c')
+            'ec9aaa5d06ecc8a8b244f0039cec22614eac97bb31266488a95aa7e92c4d84e9')
 
 package() {
 	# Install specific pieces of configuration that we want

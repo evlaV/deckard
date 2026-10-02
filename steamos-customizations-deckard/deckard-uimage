@@ -8,9 +8,6 @@ set -euo pipefail
 INITRD="${2:-}"
 UIMAGE="/boot/initrd.uImage"
 
-# Leave images built by anything other than our presets alone
-[[ "${INITRD}" == /tmp/linux-*-deckard-initrd.img ]] || exit 0
-
 mkimage -A arm64 -O linux -T ramdisk -C none -d "${INITRD}" "${UIMAGE}.tmp"
 chmod 644 "${UIMAGE}.tmp"
 mv -f "${UIMAGE}.tmp" "${UIMAGE}"
