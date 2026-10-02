@@ -125,6 +125,19 @@ run 'steamvr report'
 # WiFi connection info
 run 'iw dev wlan0 link'
 
+# WiFi power save, from the user's setting down to the hardware. These can
+# differ, e.g. streaming holds power save off, or drift on a bug:
+#  1. the user's Steam setting, as last pushed by Steam (logged to the journal
+#     by steamui_steamos on every startup and change)
+#  2. what steamos-manager persisted in NetworkManager config
+#     (wifi.powersave: 0=default 1=ignore 2=disable 3=enable)
+#  3. what the kernel is doing right now, per interface
+#  4. what steamos-manager reports over D-Bus
+run 'out=$(journalctl -q -b 0 -t steamui_steamos --no-pager -o short-iso --grep "Set wifi power management|YldSetWifiPowerManagementEnabled" | tail -n 4); echo "${out:-No Steam Wi-Fi power management setting logged this boot}"'
+run '(grep -Hs wifi.powersave /usr/lib/NetworkManager/conf.d/*.conf /etc/NetworkManager/conf.d/*.conf || echo "wifi.powersave not set, NetworkManager default applies")'
+run 'for i in $(iw dev | awk "/Interface/ {print \$2}"); do echo -n "$i: "; iw dev $i get power_save; done'
+run 'steamosctl get-wifi-power-management-state'
+
 # Network connectivity info
 run 'ip addr'
 run 'ping -4 -c4 1.1.1.1'
