@@ -1,0 +1,42 @@
+[constants]
+# This toolchain directory is baked into our build image, see the file
+# `images/android-arm64-package-builder/Dockerfile` for more details.
+llvm_dir = '/opt/android/ndk/25.2.9519653/toolchains/llvm/prebuilt/linux-x86_64'
+
+# Force the compiler to look in the right place and target the right thing
+sysroot_flags  = ['--sysroot=' + llvm_dir / 'sysroot', '--target=aarch64-none-linux-android30']
+
+# See https://github.com/android/ndk/issues/436 for more on these
+size_optimization_cflags  = ['-fdata-sections', '-ffunction-sections', '-funwind-tables']
+size_optimization_ldflags = ['-Wl,--gc-sections']
+
+
+# Enable debugging, warn on printf-crimes
+common_cflags  = sysroot_flags + size_optimization_cflags + ['-g', '-DANDROID', '-Wformat', '-no-canonical-prefixes']
+
+# Static libstdc++ to avoid issues when linked into processes with different C++ stdlibs
+# Be defensive when linking (don't allow undefined things)
+# And see https://android.googlesource.com/platform/ndk/+/master/docs/BuildSystemMaintainers.md#additional-required-arguments
+common_ldflags = sysroot_flags + size_optimization_ldflags + ['-static-libstdc++', '-Wl,--fatal-warnings', '-Wl,--no-undefined', '-Wl,--no-rosegment', '-Wl,--build-id=sha1']
+
+[binaries]
+c = llvm_dir / 'bin/clang'
+cpp = llvm_dir / 'bin/clang++'
+ar = llvm_dir / 'bin/llvm-ar'
+strip = llvm_dir / 'bin/llvm-strip'
+pkg-config = '/usr/bin/pkg-config'
+
+[properties]
+pkg_config_libdir = llvm_dir / 'sysroot/usr/lib/aarch64-linux-android/pkgconfig'
+
+[built-in options]
+c_args   = common_cflags
+cpp_args = common_cflags
+c_link_args   = common_ldflags
+cpp_link_args = common_ldflags
+
+[host_machine]
+system = 'android'
+cpu_family = 'aarch64'
+cpu = 'armv8'
+endian = 'little'
