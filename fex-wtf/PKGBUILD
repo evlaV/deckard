@@ -1,0 +1,26 @@
+pkgname=fex-wtf
+pkgver=2606
+pkgrel=2
+_commit=33c0cd1974fc7fe6722a2dd3fa6eea750cf54318
+pkgdesc='Tool for seeing FEX emulator stats'
+arch=(aarch64)
+url='https://github.com/Sonicadvance1/what-the-FEX'
+license=('MIT')
+depends=(ncurses)
+makedepends=(cmake ninja git)
+source=("git+https://github.com/Sonicadvance1/what-the-FEX.git#commit=$_commit")
+sha256sums=('b85c198c14540c3eee961a3e90bebe1d0a023d82e89ad99190673e51d9b30143')
+
+build() {
+  cd what-the-FEX
+  rm -rf build
+  mkdir build
+  cd build
+  cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr ..
+  ninja
+}
+
+package() {
+  cd what-the-FEX/build
+  DESTDIR="$pkgdir" ninja install
+}

@@ -1,0 +1,12 @@
+[Unit]
+Description=Host PID bridge for Lepton containers
+
+[Service]
+ExecStart=/usr/bin/pidbridge
+Restart=on-failure
+RuntimeDirectory=pidbridge
+RuntimeDirectoryMode=0755
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=default.target

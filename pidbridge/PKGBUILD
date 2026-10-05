@@ -1,0 +1,25 @@
+pkgname=pidbridge
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Host service that tells a containerized (Lepton) process its host-namespace PID (via SO_PEERCRED)"
+arch=('x86_64' 'aarch64')
+license=('MIT')
+depends=('glibc')
+makedepends=('gcc')
+source=('pidbridge.c'
+        'pidbridge.service')
+sha256sums=('a44c9cf5dd61e84e3c47bf44cc6c491f3210167aa7fdf1b6b6cefc08c1ff8966'
+            '3a0c74cd7fc0dd46c6de57838f09d817729661ca217d139ef925b23f6dca0ac3')
+
+build() {
+    cd "$srcdir"
+    gcc $CFLAGS $LDFLAGS -Wall -Wextra pidbridge.c -o pidbridge
+}
+
+package() {
+    cd "$srcdir"
+    install -Dm755 pidbridge "$pkgdir/usr/bin/pidbridge"
+    install -d -m0755 "$pkgdir/usr/lib/systemd/user/gamescope-session.service.wants/"
+    install -Dm644 pidbridge.service "$pkgdir/usr/lib/systemd/user/pidbridge.service"
+	ln -s ../pidbridge.service "$pkgdir/usr/lib/systemd/user/gamescope-session.service.wants/"
+}
