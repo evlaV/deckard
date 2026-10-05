@@ -1,0 +1,76 @@
+# Maintainer: Holo Team
+# Contributor: Sergej Pupykin <pupykin.s+arch@gmail.com>
+# Contributor: Eli Schwartz <eschwartz@archlinux.org>
+# Contributor: Jens Pranaitis <jens@jenux.homelinux.org>
+
+# Holo: Update to the unstable 1.37.0 version and enable the applet getfattr and devmem
+#  Part of https://github.com/evlav/mash/tasks/-/issues/39
+
+pkgname=busybox
+pkgver=1.37.0
+pkgrel=1.2
+pkgdesc="Utilities for rescue and embedded systems"
+arch=("x86_64" "aarch64")
+url="https://www.busybox.net"
+license=('GPL-2.0-only')
+makedepends=("ncurses" "musl" "kernel-headers-musl")
+validpgpkeys=('C9E9416F76E610DBD09D040F47B70C55ACC9965B')
+# Holo: Disabling LTO fixes the build error `std::length_error` in CI
+options=('!lto')
+source=("$url/downloads/$pkgname-$pkgver.tar.bz2"{,.sig}
+        "config"
+        "extra_version.patch"
+
+        # Holo: Additional patches for 1.37.0
+        "sha1-hwaccel-support.patch"
+        "fix-make-menuconfig.patch")
+sha256sums=('3311dff32e746499f4df0d5df04d7eb396382d7e108bb9250e7b519b837043a4'
+            'SKIP'
+            '7041383b4c11b9667e639cc879d4bfaa4123843f0153b5741034d1f21111c8b9'
+            '0a8608fa4e633ebb4cfeadf29fd284b082e6f80c6393c10494bcb7f2cbebba27'
+            '16275fe7b566584050f3ae65d4d56b89e0ca966135951b2f014cf8a6223ee5c1'
+            '752d69126ddc44daf91cf43d424ef7f43abdf500416933ac6109aaf395412345')
+b2sums=('bfd9b81a2428670722934316d429b56886b232dc43ced5873a1f72966dd2bb604e3d607082bb8404bc7e8c15c5c79265fc19f8932e2c9703caafd16fc8037a5a'
+        'SKIP'
+        '65b75b1631ff08fd1723a23acbacf7172b16fa6a30ae66fb7cbfa66d3d44488a236e443fcbd2d6975f21cf6d067422606cfc0b3a3a97ad4b03e747fd81989e5a'
+        '36625ae839e194fdc3649620af0b0c8c6db9de1f9ae6bc9ab2e5feb1d07c415a070745b62adad4edd689d8d53895862057be797e4ac87be9fde15e3ae7966b28'
+        '856a7f9c4acbfdbbd1b131822c0db492d14ee0c936d7bc5916980508c35d096e54321a529c452e877da25922c8ed1e0dadbce5573d38ca70045ef722d9dbd4e0'
+        'e284f532850e5113513ece76e17039f34cf6b93654534565afee26d59d6f03d63a9143bd7c1f632c5b3b033e2d99a98574f0a67a968b547528ec07d265a43dc9')
+
+prepare() {
+  local patch=
+  cd "$srcdir/$pkgname-$pkgver"
+
+  for patch in "${source[@]}"
+  do
+    case $patch in
+      *.patch)
+        echo "Applying $patch"
+        patch -p1 < "$srcdir"/$patch
+        ;;
+    esac
+  done
+}
+
+build() {
+  cd "$srcdir/$pkgname-$pkgver"
+
+  cp "$srcdir"/config .config
+  # reproducible build
+  export KCONFIG_NOTIMESTAMP=1
+  make CC=musl-gcc BB_EXTRA_VERSION="-$pkgrel"
+}
+
+package() {
+  cd "$srcdir/$pkgname-$pkgver"
+
+  install -Dm0755 busybox "$pkgdir"/usr/bin/busybox
+
+  # docs
+  install -Dm644 docs/busybox.1 "$pkgdir"/usr/share/man/man1/busybox.1
+  install -dm0755 "$pkgdir"/usr/share/doc/$pkgname
+  cp -a examples "$pkgdir"/usr/share/doc/$pkgname/
+  for doc in BusyBox.html BusyBox.txt; do
+    install -Dm644 docs/$doc "$pkgdir"/usr/share/doc/$pkgname/$doc
+  done
+}

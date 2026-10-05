@@ -1,0 +1,125 @@
+# Maintainer: Simon Hallsten <flightlessmangoyt@gmail.com>
+# Contributor: Emil Velikov <emil.l.velikov@gmail.com>
+
+pkgname=('mangohud')
+_srctag=20260922.1
+pkgver=${_srctag//-/.}
+pkgrel=1
+pkgdesc="Vulkan and OpenGL overlay to display performance information"
+url="https://github.com/flightlessmango/MangoHud"
+arch=(x86_64 aarch64)
+license=(MIT)
+replaces=('vulkan-mesa-layer-mango')
+makedepends=(
+  dbus
+  git
+  glew
+  glfw-x11
+  glslang
+  libglvnd
+  libtracefs
+  libx11
+  libxnvctrl
+  libxrandr
+  meson
+  nlohmann-json
+  python
+  python-mako
+)
+
+depends=(
+  bash # for mangohud script
+  dbus # media player info
+  glew # for mangoapp
+  glfw-x11 # for mangoapp
+  libglvnd # for GL overlay
+  libx11 # for mangoapp
+  libxkbcommon
+  spdlog
+)
+
+source=(
+  "mangohud"::"git+https://github.com/evlav/deckard-MangoHud#tag=$_srctag"
+  "imgui-v1.89.9.tar.gz::https://github.com/ocornut/imgui/archive/refs/tags/v1.89.9.tar.gz"
+  "imgui-1.89-9-wrap.zip::https://wrapdb.mesonbuild.com/v2/imgui_1.89.9-1/get_patch"
+  "implot-v0.16.zip::https://github.com/epezent/implot/archive/refs/tags/v0.16.zip"
+  "implot-v0.16-1-wrap.zip::https://wrapdb.mesonbuild.com/v2/implot_0.16-1/get_patch"
+  "vulkan-headers-1.2.158.tar.gz::https://github.com/KhronosGroup/Vulkan-Headers/archive/v1.2.158.tar.gz"
+  "vulkan-headers-1.2.158-2-wrap.zip::https://wrapdb.mesonbuild.com/v2/vulkan-headers_1.2.158-2/get_patch"
+)
+
+sha256sums=('SKIP'
+            '1acc27a778b71d859878121a3f7b287cd81c29d720893d2b2bf74455bf9d52d6'
+            '9b21290c597d76bf8d4eeb3f9ffa024b11d9ea6c61e91d648ccc90b42843d584'
+            '24f772c688f6b8a6e19d7efc10e4923a04a915f13d487b08b83553aa62ae1708'
+            '1c6b1462066a5452fa50c1da1dd47fed841f28232972c82d778f2962936568c7'
+            '53361271cfe274df8782e1e47bdc9e61b7af432ba30acbfe31723f9df2c257f3'
+            '860358cf5e73f458cd1e88f8c38116d123ab421d5ce2e4129ec38eaedd820e17')
+
+# Get `download_git` available for use
+source /usr/share/makepkg/util/source.sh
+source /usr/share/makepkg/source/git.sh
+pkgver() {
+  # This to allow `pkgver()` to work from `find_unbuilt_packages.sh`
+  if [[ ! -d mangohud ]]; then
+    if [[ ! -v "startdir" ]]; then
+      startdir="$(pwd)"
+    fi
+    download_git "${source[0]}" >/dev/null
+  fi
+  cd mangohud
+  git describe --tags | sed -r 's/^v//;s/([^-]*-g)/r\1/;s/-/./g'
+}
+
+prepare() {
+  cd mangohud
+
+  # meson subprojects
+  ln -sfv "$srcdir/imgui-1.89.9" subprojects
+  ln -sfv "$srcdir/implot-0.16" subprojects
+  ln -sfv "$srcdir/Vulkan-Headers-1.2.158" subprojects
+}
+
+build() {
+  local meson_options=(
+    -D append_libdir_mangohud=false
+    -D use_system_spdlog=enabled
+    -D mangoapp=true
+    -D mangohudctl=true
+    -D with_xnvctrl=disabled
+    -D with_nvml=disabled
+    -D tests=disabled
+    -D with_fex=true
+  )
+
+  arch-meson mangohud build64 "${meson_options[@]}"
+  meson compile -C build64
+}
+
+package_mangohud() {
+  conflicts=('mangohud-common')
+  meson install -C build64 --destdir "$pkgdir"
+  install -m644 -Dt "$pkgdir/usr/share/licenses/$pkgname" mangohud/LICENSE
+}
+
+# Disabled for aarch64
+# package_lib32-mangohud() {
+#   depends=(
+#     lib32-glibc
+#     lib32-gcc-libs
+#   )
+#   # XXX: should really be optdepends
+#   depends+=(
+#     lib32-dbus # media player info
+#     lib32-libglvnd # for GL overlay
+#   )
+
+#   meson install -C build32 --destdir "$pkgdir"
+#   install -m644 -Dt "$pkgdir/usr/share/licenses/$pkgname" mangohud/LICENSE
+
+#   rm -rf "$pkgdir/usr/bin"
+#   rm -rf "$pkgdir/usr/share/doc"
+#   rm -rf "$pkgdir/usr/share/icons"
+#   rm -rf "$pkgdir/usr/share/man"
+#   rm -rf "$pkgdir/usr/share/metainfo"
+# }

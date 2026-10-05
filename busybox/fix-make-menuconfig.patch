@@ -1,0 +1,11 @@
+--- a/scripts/kconfig/lxdialog/check-lxdialog.sh	2025-05-16 16:26:45.439468642 +0000
++++ b/scripts/kconfig/lxdialog/check-lxdialog.sh	2025-05-16 16:26:58.459467692 +0000
+@@ -47,7 +47,7 @@
+ check() {
+         $cc -x c - -o $tmp 2>/dev/null <<'EOF'
+ #include CURSES_LOC
+-main() {}
++int main() {}
+ EOF
+ 	if [ $? != 0 ]; then
+ 	    echo " *** Unable to find the ncurses libraries or the"       1>&2
