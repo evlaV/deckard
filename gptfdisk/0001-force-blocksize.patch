@@ -1,0 +1,133 @@
+diff --git a/diskio-unix.cc b/diskio-unix.cc
+index 0897c56..b07d9f4 100644
+--- a/diskio-unix.cc
++++ b/diskio-unix.cc
+@@ -154,6 +154,11 @@ void DiskIO::Close(void) {
+ // Returns block size of device pointed to by fd file descriptor. If the ioctl
+ // returns an error condition, print a warning but return a value of SECTOR_SIZE
+ // (512). If the disk can't be opened at all, return a value of 0.
++static int ForcedBlockSize = 0;
++void DiskIO::ForceBlockSize(int newBlockSize) {
++   ForcedBlockSize = newBlockSize;
++}
++
+ int DiskIO::GetBlockSize(void) {
+    int err = -1, blockSize = 0;
+ #ifdef __sun__
+@@ -165,6 +170,10 @@ int DiskIO::GetBlockSize(void) {
+       OpenForRead();
+    } // if
+ 
++   if (ForcedBlockSize != 0) {
++      return ForcedBlockSize;
++   }
++
+    if (isOpen) {
+ #ifdef __APPLE__
+       err = ioctl(fd, DKIOCGETBLOCKSIZE, &blockSize);
+@@ -450,6 +459,7 @@ uint64_t DiskIO::DiskSize(int *err) {
+       // on Linux, but I had some problems. IIRC, it ran OK on 32-bit
+       // systems but not on 64-bit. Keep this in mind in case of
+       // 32/64-bit issues on MacOS....
++      int blockSize = GetBlockSize();
+ #ifdef __APPLE__
+       *err = ioctl(fd, DKIOCGETBLOCKCOUNT, &sectors);
+       platformFound++;
+@@ -462,8 +472,7 @@ uint64_t DiskIO::DiskSize(int *err) {
+ #endif
+ #if defined (__FreeBSD__) || defined (__FreeBSD_kernel__)
+       *err = ioctl(fd, DIOCGMEDIASIZE, &bytes);
+-      long long b = GetBlockSize();
+-      sectors = bytes / b;
++      sectors = bytes / blockSize;
+       platformFound++;
+ #endif
+ #ifdef __linux__
+@@ -482,7 +491,7 @@ uint64_t DiskIO::DiskSize(int *err) {
+       } // if
+       // Unintuitively, the above returns values in 512-byte blocks, no
+       // matter what the underlying device's block size. Correct for this....
+-      sectors /= (GetBlockSize() / 512);
++      sectors /= (blockSize / 512);
+       platformFound++;
+ #endif
+       if (platformFound != 1)
+@@ -494,10 +503,10 @@ uint64_t DiskIO::DiskSize(int *err) {
+       if ((sectors == 0) || (*err == -1)) {
+          if (fstat64(fd, &st) == 0) {
+             bytes = st.st_size;
+-            if ((bytes % UINT64_C(512)) != 0)
+-               cerr << "Warning: File size is not a multiple of 512 bytes!"
++            if ((bytes % blockSize) != 0)
++               cerr << "Warning: File size is not a multiple of the sector size (" << blockSize << " bytes)!"
+                     << " Misbehavior is likely!\n\a";
+-            sectors = bytes / UINT64_C(512);
++            sectors = bytes / blockSize;
+          } // if
+       } // if
+    } // if (isOpen)
+diff --git a/diskio.h b/diskio.h
+index b5c2ecc..a4ee6e9 100644
+--- a/diskio.h
++++ b/diskio.h
+@@ -69,6 +69,7 @@ class DiskIO {
+       int Read(void* buffer, int numBytes);
+       int Write(void* buffer, int numBytes);
+       int DiskSync(void); // resync disk caches to use new partitions
++      void ForceBlockSize(int newBlockSize);
+       int GetBlockSize(void);
+       int GetPhysBlockSize(void);
+       std::string GetModel(void) {return modelName;}
+diff --git a/gpt.h b/gpt.h
+index 17b3380..3447b2c 100644
+--- a/gpt.h
++++ b/gpt.h
+@@ -177,6 +177,7 @@ public:
+    bool ValidPartNum (const uint32_t partNum);
+    const GPTPart & operator[](uint32_t partNum) const;
+    const GUIDData & GetDiskGUID(void) const;
++   void ForceBlockSize(int newBlockSize) {blockSize = newBlockSize; myDisk.ForceBlockSize(blockSize); }
+    uint32_t GetBlockSize(void) {return blockSize;}
+ 
+    // Find information about free space
+diff --git a/gptcl.cc b/gptcl.cc
+index da1609d..22777c0 100644
+--- a/gptcl.cc
++++ b/gptcl.cc
+@@ -96,6 +96,7 @@ int GPTDataCL::DoOptions(int argc, char* argv[]) {
+       {"align-end", 'I', POPT_ARG_NONE, NULL, 'I', "align partition end points", ""},
+       {"move-main-table", 'j', POPT_ARG_INT, &mainTableLBA, 'j', "change the start sector of the main partition table", "sector"},
+       {"move-backup-table", 'k', POPT_ARG_INT, &secondTableLBA, 'k', "change the start sector of the second/backup partition table", "sector"},
++      {"force-blocksize", 'K', POPT_ARG_INT, &sSize, 'K', "force block size (most useful for image files)", "bytes"},
+       {"load-backup", 'l', POPT_ARG_STRING, &backupFile, 'l', "load GPT backup from file", "file"},
+       {"list-types", 'L', POPT_ARG_NONE, NULL, 'L', "list known partition types", ""},
+       {"gpttombr", 'm', POPT_ARG_STRING, &mbrParts, 'm', "convert GPT to MBR", "partnum[:partnum...]"},
+@@ -141,6 +142,9 @@ int GPTDataCL::DoOptions(int argc, char* argv[]) {
+             if (cmd == "list")
+                Attributes::ListAttributes();
+             break;
++         case 'K':
++            ForceBlockSize(sSize);
++            break;
+          case 'L':
+             typeHelper.ShowAllTypes(0);
+             break;
+@@ -167,7 +171,8 @@ int GPTDataCL::DoOptions(int argc, char* argv[]) {
+       if (LoadPartitions((string) device)) {
+          if ((WhichWasUsed() == use_mbr) || (WhichWasUsed() == use_bsd))
+             saveNonGPT = 0; // flag so we don't overwrite unless directed to do so
+-         sSize = GetBlockSize();
++         if (sSize == 0)
++            sSize = GetBlockSize();
+          while ((opt = poptGetNextOpt(poptCon)) > 0) {
+             switch (opt) {
+                case 'A': {
+@@ -298,6 +303,8 @@ int GPTDataCL::DoOptions(int argc, char* argv[]) {
+                      neverSaveData = 1;
+                   } // if/else
+                   break;
++               case 'K':
++                  break;
+                case 'l':
+                   LoadBackupFile(backupFile, saveData, neverSaveData);
+                   free(backupFile);

@@ -1,0 +1,50 @@
+# Maintainer: Evangelos Foutras <foutrelis@archlinux.org>
+# Contributor: Tobias Powalowski <tpowa@archlinux.org>
+# Contributor: Hokum <hokum_at_mail_dot_ru>
+
+pkgname=gptfdisk
+pkgver=1.0.10
+pkgrel=2
+pkgdesc="A text-mode partitioning tool that works on GUID Partition Table (GPT) disks"
+arch=('x86_64')
+url="https://www.rodsbooks.com/gdisk/"
+license=('GPL2')
+depends=('gcc-libs' 'popt' 'libuuid.so' 'libncursesw.so')
+provides=("gdisk=$pkgver")
+conflicts=('gdisk')
+replaces=('gdisk')
+source=(
+    0001-force-blocksize.patch
+    https://downloads.sourceforge.net/project/$pkgname/$pkgname/$pkgver/$pkgname-$pkgver.tar.gz
+)
+sha256sums=('07bcd5f422cf63d5e7b360ef7374f66d3d69b7b0fb761a790ffd66e7a51165ca'
+            '2abed61bc6d2b9ec498973c0440b8b804b7a72d7144069b5a9209b2ad693a282')
+
+prepare() {
+  cd "$srcdir/$pkgname-$pkgver"
+
+  # Allow --force-blocksize option
+  patch -p1 <"${srcdir}/0001-force-blocksize.patch"
+
+  # https://sourceforge.net/p/gptfdisk/discussion/939590/thread/bc29ca06f8/
+  sed -i '/^#include /s:ncursesw/::' gptcurses.cc
+}
+
+build() {
+  cd "$srcdir/$pkgname-$pkgver"
+  make
+}
+
+check() {
+  cd "$srcdir/$pkgname-$pkgver"
+  make test
+}
+
+package () {
+  cd "$srcdir/$pkgname-$pkgver"
+
+  install -d "$pkgdir"/usr/{bin,share/{doc/gdisk,man/man8}}
+  install -t "$pkgdir/usr/bin" {,c,s}gdisk fixparts
+  install -m644 -t "$pkgdir/usr/share/man/man8" {{,c,s}gdisk,fixparts}.8
+  install -m644 -t "$pkgdir/usr/share/doc/gdisk" README NEWS
+}

@@ -1,0 +1,66 @@
+diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
+index ced2181ab..333f1fc3f 100644
+--- a/src/ap/ap_config.h
++++ b/src/ap/ap_config.h
+@@ -1269,6 +1269,23 @@ hostapd_set_oper_chwidth(struct hostapd_config *conf,
+ 	conf->vht_oper_chwidth = oper_chwidth;
+ }
+ 
++static inline u8 hostapd_get_tpe_count(struct hostapd_config *conf)
++{
++	switch (hostapd_get_oper_chwidth(conf)) {
++	case CONF_OPER_CHWIDTH_USE_HT:
++		return conf->secondary_channel == 0 ? 0 : 1;
++	case CONF_OPER_CHWIDTH_80MHZ:
++		return 2;
++	case CONF_OPER_CHWIDTH_80P80MHZ:
++	case CONF_OPER_CHWIDTH_160MHZ:
++	case CONF_OPER_CHWIDTH_320MHZ:
++		/* 320 MHz currently reuses the highest HE TPE entry. */
++		return 3;
++	default:
++		return 0;
++	}
++}
++
+ static inline u8
+ hostapd_get_oper_centr_freq_seg0_idx(struct hostapd_config *conf)
+ {
+diff --git a/src/ap/beacon.c b/src/ap/beacon.c
+index cec0c9829..4f5dcc42e 100644
+--- a/src/ap/beacon.c
++++ b/src/ap/beacon.c
+@@ -587,8 +587,10 @@ static size_t he_elem_len(struct hostapd_data *hapd)
+ 		 * default client with unit interpretation of regulatory
+ 		 * client EIRP */
+ 		if (hapd->iconf->reg_def_cli_eirp != -1 &&
+-		    he_reg_is_sp(hapd->iconf->he_6ghz_reg_pwr_type))
+-			len += 4;
++		    (he_reg_is_sp(hapd->iconf->he_6ghz_reg_pwr_type) ||
++		     hapd->iconf->he_6ghz_reg_pwr_type ==
++		     HE_REG_INFO_6GHZ_AP_TYPE_VLP))
++			len += 4 + hostapd_get_tpe_count(hapd->iconf);
+ 	}
+ #endif /* CONFIG_IEEE80211AX */
+ 
+diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
+index 6c516bc8a..b4f38e41d 100644
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -7132,11 +7132,15 @@ u8 * hostapd_eid_txpower_envelope(struct hostapd_data *hapd, u8 *eid)
+ 		}
+ 
+ 		if (iconf->reg_def_cli_eirp != -1 &&
+-		    he_reg_is_sp(iconf->he_6ghz_reg_pwr_type))
++		    (he_reg_is_sp(iconf->he_6ghz_reg_pwr_type) ||
++		     iconf->he_6ghz_reg_pwr_type ==
++		     HE_REG_INFO_6GHZ_AP_TYPE_VLP)) {
++			tx_pwr_count = hostapd_get_tpe_count(iconf);
+ 			eid = hostapd_add_tpe_info(
+ 				eid, tx_pwr_count, REGULATORY_CLIENT_EIRP,
+ 				REG_DEFAULT_CLIENT,
+ 				hapd->iconf->reg_def_cli_eirp);
++		}
+ 
+ 		return eid;
+ 	}

@@ -1,0 +1,29 @@
+pkgname=gpuvis
+_commit=504eb62fe52b5e3c1a17e6ca049b5e39b20fffc3
+pkgver=0.1+git${_commit:0:8}
+pkgrel=1
+pkgdesc="A Linux GPU profiler"
+arch=('aarch64')
+url="https://github.com/mikesart/gpuvis"
+license=('MIT')
+depends=(gtk3 sdl2 rapidjson)
+makedepends=('ninja' 'cmake' 'cmake>=3.16.0')
+source=("git+https://github.com/mikesart/gpuvis.git#commit=${_commit}")
+sha256sums=('SKIP')
+
+build() {
+    cmake -G Ninja \
+          -S gpuvis \
+          -B build \
+          -D CMAKE_BUILD_TYPE=Release \
+          -D CMAKE_INSTALL_PREFIX=/usr
+
+    ninja -C build
+}
+
+package() {
+    # gpuvis doesn't have an install step?
+    #DESTDIR="$pkgdir" cmake --install build
+    install -Dm755 "${srcdir}/build/gpuvis" "${pkgdir}/usr/bin/gpuvis"
+    install -Dm644 "${srcdir}/gpuvis/LICENSE" "${pkgdir}/usr/share/licenses/gpuvis/LICENSE"
+}

@@ -1,0 +1,27 @@
+# Maintainer: Gabe Rowe <gaber@valvesoftware.com>
+
+pkgname=ufs-utils
+pkgver=7.14.12
+pkgrel=1
+pkgdesc="UFS utils"
+arch=('aarch64')
+url="https://github.com/SanDisk-Open-Source/ufs-utils"
+license=('GPL2')
+depends=()
+makedepends=()
+source=("https://github.com/SanDisk-Open-Source/ufs-utils/archive/v$pkgver/$pkgname-$pkgver.tar.gz")
+sha256sums=('96d15ce4b0990049d812d24afc2a62240c1a4aa534ea6aebb5aebd34dccb2dac')
+
+prepare() {
+    cd "$pkgname-$pkgver"
+}
+
+build() {
+    cd "$pkgname-$pkgver"
+    make V=1 CFLAGS+=-D_GNU_SOURCE
+}
+
+package() {
+    cd "$pkgname-$pkgver"
+    install -TDm755  ufs-utils "$pkgdir/usr/bin/ufs-utils"
+}
