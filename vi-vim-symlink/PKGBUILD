@@ -4,7 +4,7 @@
 
 pkgname=vi-vim-symlink
 pkgver=1
-pkgrel=5
+pkgrel=2
 pkgdesc='Replace vi with vim'
 arch=('any')
 url='http://www.vim.org'

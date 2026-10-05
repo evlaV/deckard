@@ -2,7 +2,7 @@
 
 pkgname=foxnet
 pkgver=1.5
-pkgrel=11
+pkgrel=9
 pkgdesc="Foxnet and various paraphernalia"
 arch=(any)
 depends=(python-psutil python-aiohttp nvme-cli foxnetstatsd 'python>=3.11' 'python<3.15')

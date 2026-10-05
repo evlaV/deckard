@@ -7,7 +7,7 @@
 pkgbase=steam
 pkgname=(steam steam-devices)
 pkgver=1.0.0.85
-pkgrel=5
+pkgrel=2
 pkgdesc="Valve's digital software delivery system"
 url='https://steampowered.com/'
 arch=('aarch64' 'x86_64')

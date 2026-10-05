@@ -2,7 +2,7 @@
 pkgname=foxnetstatsd
 pkgver=1.5
 commithash=7f1d16b711a8ac3f13a34e19395a99b0c69e9ac1
-pkgrel=13
+pkgrel=11
 pkgdesc="Foxnet stats daemon"
 arch=(any)
 depends=(python-psutil python-aiohttp nvme-cli 'python>=3.11' 'python<3.15')

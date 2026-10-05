@@ -2,7 +2,7 @@
 
 pkgname='steamos-networking-tools'
 pkgver=1.2
-pkgrel=4
+pkgrel=1
 pkgdesc='SteamOS networking tools'
 arch=('any')
 license=('LGPL2.1')

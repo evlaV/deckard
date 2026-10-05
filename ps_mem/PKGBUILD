@@ -2,7 +2,7 @@
 
 pkgname=ps_mem
 pkgver=3.14
-pkgrel=4
+pkgrel=1
 pkgdesc="Utility to report core memory usage per program"
 arch=('any')
 url="https://github.com/pixelb/ps_mem"
