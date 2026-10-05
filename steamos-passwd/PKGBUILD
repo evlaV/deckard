@@ -2,7 +2,7 @@
 
 pkgname='steamos-passwd'
 pkgver=1.0
-pkgrel=4
+pkgrel=1
 pkgdesc='SteamOS password setter tool'
 arch=('any')
 license=('LGPL2.1')

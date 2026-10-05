@@ -1,6 +1,6 @@
 pkgname=usb-gadget-tools
 pkgver=20260331.1
-pkgrel=4
+pkgrel=1
 pkgdesc='USB gadget tools'
 arch=('any')
 url='https://github.com/evlav/deckard-holo'
