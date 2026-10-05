@@ -1,0 +1,39 @@
+From 0d7c64461b425a2ecaf47488b10b3fbe35bb518f Mon Sep 17 00:00:00 2001
+From: Vivek Das Mohapatra <vivek@collabora.com>
+Date: Wed, 26 Feb 2025 01:37:19 +0000
+Subject: [PATCH 2/2] glamor: enable glamor configuration by default
+
+See https://gitlab.steamos.cloud/potato/mash/tasks/-/issues/16#note_194222
+---
+ sesman/sesman.ini.in | 5 +++++
+ sesman/startwm.sh    | 3 ++-
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/sesman/sesman.ini.in b/sesman/sesman.ini.in
+index 3a005034..51aa0a3e 100644
+--- a/sesman/sesman.ini.in
++++ b/sesman/sesman.ini.in
+@@ -230,3 +230,6 @@ EnableSyslog=true
+ 
+ [SessionVariables]
+ PULSE_SCRIPT=@sesmansysconfdir@/pulse/default.pa
++#VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/freedreno_icd.x86_64.json:/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json
++#MESA_LOADER_DRIVER_OVERRIDE=zink
++#ZINK_DEBUG=optimal_keys
+diff --git a/sesman/startwm.sh b/sesman/startwm.sh
+index 7c39f24c..29416e58 100755
+--- a/sesman/startwm.sh
++++ b/sesman/startwm.sh
+@@ -139,7 +139,8 @@ wm_start()
+   fi
+ 
+   pre_start
+-  xterm
++  # xterm
++  dbus-launch startplasma-x11
+   post_start
+ }
+ 
+-- 
+2.39.5
+
