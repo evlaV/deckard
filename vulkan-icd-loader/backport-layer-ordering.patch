@@ -1,0 +1,175 @@
+From b15dd0efde2749b9686962f8347046e8049193a4 Mon Sep 17 00:00:00 2001
+From: Gabe Rowe <gaber@valvesoftware.com>
+Date: Tue, 30 Sep 2025 14:17:09 -0700
+Subject: [PATCH 1/1] backport layer ordering patch
+
+---
+ loader/loader.c             | 40 +++++++++++++++++++++++++++----------
+ loader/loader_environment.c | 14 +++++--------
+ loader/loader_environment.h |  2 +-
+ 3 files changed, 36 insertions(+), 20 deletions(-)
+
+diff --git a/loader/loader.c b/loader/loader.c
+index 86f55fe31..e9d6ac25c 100644
+--- a/loader/loader.c
++++ b/loader/loader.c
+@@ -4316,15 +4316,20 @@ loader_platform_dl_handle loader_open_layer_file(const struct loader_instance *i
+ 
+ // Go through the search_list and find any layers which match type. If layer
+ // type match is found in then add it to ext_list.
+-VkResult loader_add_implicit_layers(const struct loader_instance *inst, const struct loader_envvar_all_filters *filters,
+-                                    struct loader_pointer_layer_list *target_list,
++// If the layer name is in enabled_layers_env, do not add it to the list, that way it can be ordered alongside the other env-var
++// enabled layers
++VkResult loader_add_implicit_layers(const struct loader_instance *inst, const char *enabled_layers_env,
++                                    const struct loader_envvar_all_filters *filters, struct loader_pointer_layer_list *target_list,
+                                     struct loader_pointer_layer_list *expanded_target_list,
+                                     const struct loader_layer_list *source_list) {
+     for (uint32_t src_layer = 0; src_layer < source_list->count; src_layer++) {
+         struct loader_layer_properties *prop = &source_list->list[src_layer];
+         if (0 == (prop->type_flags & VK_LAYER_TYPE_FLAG_EXPLICIT_LAYER)) {
+-            VkResult result = loader_add_implicit_layer(inst, prop, filters, target_list, expanded_target_list, source_list);
+-            if (result == VK_ERROR_OUT_OF_HOST_MEMORY) return result;
++            // If this layer appears in the enabled_layers_env, don't add it. We will let loader_add_environment_layers handle it
++            if (NULL == enabled_layers_env || NULL == strstr(enabled_layers_env, prop->info.layerName)) {
++                VkResult result = loader_add_implicit_layer(inst, prop, filters, target_list, expanded_target_list, source_list);
++                if (result == VK_ERROR_OUT_OF_HOST_MEMORY) return result;
++            }
+         }
+     }
+     return VK_SUCCESS;
+@@ -4350,6 +4355,7 @@ VkResult loader_enable_instance_layers(struct loader_instance *inst, const VkIns
+                                        const struct loader_layer_list *instance_layers,
+                                        const struct loader_envvar_all_filters *layer_filters) {
+     VkResult res = VK_SUCCESS;
++    char *enabled_layers_env = NULL;
+ 
+     assert(inst && "Cannot have null instance");
+ 
+@@ -4376,15 +4382,17 @@ VkResult loader_enable_instance_layers(struct loader_instance *inst, const VkIns
+         goto out;
+     }
+ 
++    enabled_layers_env = loader_getenv(ENABLED_LAYERS_ENV, inst);
++
+     // Add any implicit layers first
+-    res = loader_add_implicit_layers(inst, layer_filters, &inst->app_activated_layer_list, &inst->expanded_activated_layer_list,
+-                                     instance_layers);
++    res = loader_add_implicit_layers(inst, enabled_layers_env, layer_filters, &inst->app_activated_layer_list,
++                                     &inst->expanded_activated_layer_list, instance_layers);
+     if (res != VK_SUCCESS) {
+         goto out;
+     }
+ 
+     // Add any layers specified via environment variable next
+-    res = loader_add_environment_layers(inst, VK_LAYER_TYPE_FLAG_EXPLICIT_LAYER, layer_filters, &inst->app_activated_layer_list,
++    res = loader_add_environment_layers(inst, enabled_layers_env, layer_filters, &inst->app_activated_layer_list,
+                                         &inst->expanded_activated_layer_list, instance_layers);
+     if (res != VK_SUCCESS) {
+         goto out;
+@@ -4396,6 +4404,10 @@ VkResult loader_enable_instance_layers(struct loader_instance *inst, const VkIns
+ 
+     warn_if_layers_are_older_than_application(inst);
+ out:
++    if (enabled_layers_env != NULL) {
++        loader_free_getenv(enabled_layers_env, inst);
++    }
++
+     return res;
+ }
+ 
+@@ -5234,6 +5246,7 @@ VkResult loader_validate_instance_extensions(struct loader_instance *inst, const
+                                              const VkInstanceCreateInfo *pCreateInfo) {
+     VkExtensionProperties *extension_prop;
+     char *env_value;
++    char *enabled_layers_env = NULL;
+     bool check_if_known = true;
+     VkResult res = VK_SUCCESS;
+ 
+@@ -5263,14 +5276,17 @@ VkResult loader_validate_instance_extensions(struct loader_instance *inst, const
+             goto out;
+         }
+     } else {
++        enabled_layers_env = loader_getenv(ENABLED_LAYERS_ENV, inst);
++
+         // Build the lists of active layers (including meta layers) and expanded layers (with meta layers resolved to their
+         // components)
+-        res = loader_add_implicit_layers(inst, layer_filters, &active_layers, &expanded_layers, instance_layers);
++        res =
++            loader_add_implicit_layers(inst, enabled_layers_env, layer_filters, &active_layers, &expanded_layers, instance_layers);
+         if (res != VK_SUCCESS) {
+             goto out;
+         }
+-        res = loader_add_environment_layers(inst, VK_LAYER_TYPE_FLAG_EXPLICIT_LAYER, layer_filters, &active_layers,
+-                                            &expanded_layers, instance_layers);
++        res = loader_add_environment_layers(inst, enabled_layers_env, layer_filters, &active_layers, &expanded_layers,
++                                            instance_layers);
+         if (res != VK_SUCCESS) {
+             goto out;
+         }
+@@ -5356,6 +5372,10 @@ VkResult loader_validate_instance_extensions(struct loader_instance *inst, const
+ out:
+     loader_destroy_pointer_layer_list(inst, &active_layers);
+     loader_destroy_pointer_layer_list(inst, &expanded_layers);
++    if (enabled_layers_env != NULL) {
++        loader_free_getenv(enabled_layers_env, inst);
++    }
++
+     return res;
+ }
+ 
+diff --git a/loader/loader_environment.c b/loader/loader_environment.c
+index 4f9133ecd..bd76ce8ea 100644
+--- a/loader/loader_environment.c
++++ b/loader/loader_environment.c
+@@ -448,20 +448,20 @@ bool check_name_matches_filter_environment_var(const char *name, const struct lo
+ 
+ // Get the layer name(s) from the env_name environment variable. If layer is found in
+ // search_list then add it to layer_list.  But only add it to layer_list if type_flags matches.
+-VkResult loader_add_environment_layers(struct loader_instance *inst, const enum layer_type_flags type_flags,
++VkResult loader_add_environment_layers(struct loader_instance *inst, const char *enabled_layers_env,
+                                        const struct loader_envvar_all_filters *filters,
+                                        struct loader_pointer_layer_list *target_list,
+                                        struct loader_pointer_layer_list *expanded_target_list,
+                                        const struct loader_layer_list *source_list) {
+     VkResult res = VK_SUCCESS;
+-    char *layer_env = loader_getenv(ENABLED_LAYERS_ENV, inst);
++    const enum layer_type_flags type_flags = VK_LAYER_TYPE_FLAG_EXPLICIT_LAYER;
+ 
+     // If the layer environment variable is present (i.e. VK_INSTANCE_LAYERS), we will always add it to the layer list.
+-    if (layer_env != NULL) {
+-        size_t layer_env_len = strlen(layer_env) + 1;
++    if (enabled_layers_env != NULL) {
++        size_t layer_env_len = strlen(enabled_layers_env) + 1;
+         char *name = loader_stack_alloc(layer_env_len);
+         if (name != NULL) {
+-            loader_strncpy(name, layer_env_len, layer_env, layer_env_len);
++            loader_strncpy(name, layer_env_len, enabled_layers_env, layer_env_len);
+ 
+             loader_log(inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_LAYER_BIT, 0, "env var \'%s\' defined and adding layers \"%s\"",
+                        ENABLED_LAYERS_ENV, name);
+@@ -560,9 +560,5 @@ VkResult loader_add_environment_layers(struct loader_instance *inst, const enum
+ 
+ out:
+ 
+-    if (layer_env != NULL) {
+-        loader_free_getenv(layer_env, inst);
+-    }
+-
+     return res;
+ }
+diff --git a/loader/loader_environment.h b/loader/loader_environment.h
+index 15474a3ab..efee075d8 100644
+--- a/loader/loader_environment.h
++++ b/loader/loader_environment.h
+@@ -49,7 +49,7 @@ VkResult parse_layers_disable_filter_environment_var(const struct loader_instanc
+                                                      struct loader_envvar_disable_layers_filter *disable_struct);
+ VkResult parse_layer_environment_var_filters(const struct loader_instance *inst, struct loader_envvar_all_filters *layer_filters);
+ bool check_name_matches_filter_environment_var(const char *name, const struct loader_envvar_filter *filter_struct);
+-VkResult loader_add_environment_layers(struct loader_instance *inst, const enum layer_type_flags type_flags,
++VkResult loader_add_environment_layers(struct loader_instance *inst, const char *enabled_layers_env,
+                                        const struct loader_envvar_all_filters *filters,
+                                        struct loader_pointer_layer_list *target_list,
+                                        struct loader_pointer_layer_list *expanded_target_list,
+-- 
+2.51.0

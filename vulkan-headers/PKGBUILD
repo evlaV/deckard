@@ -1,0 +1,55 @@
+# Maintainer: Jan Alexander Steffens (heftig) <heftig@archlinux.org>
+# Maintainer: Laurent Carlier <lordheavym@gmail.com>
+
+source ../vulkan-headers/vulkan_common.pkgbuild
+
+pkgname=vulkan-headers
+pkgver="${_pkgver}"
+pkgrel="${_pkgrel}"
+epoch=1
+pkgdesc="Vulkan header files and API registry"
+url="https://www.vulkan.org/"
+arch=(any)
+license=("Apache-2.0 OR MIT")
+depends=()
+makedepends=(
+  cmake
+  git
+  ninja
+  python
+)
+optdepends=(
+  "python: Registry tools"
+)
+provides=("vulkan-hpp=$pkgver")
+groups=(vulkan-devel)
+source=("${_vulkan_headers_url}")
+b2sums=('d4703fab34991fd81e5c44c7ba5aa15aca30dacc6ddfec82972cda16e8598e0c8180d4612adca9063efc57b1f32c87f11c3e8f6e87df7b4785d055e0f441ea68')
+
+build() {
+  local cmake_options=(
+    -D CMAKE_BUILD_TYPE=Release
+    -D CMAKE_INSTALL_PREFIX=/usr
+    -D CMAKE_INSTALL_SYSCONFDIR=/etc
+    -D CMAKE_SKIP_INSTALL_RPATH=ON
+  )
+
+  cmake -S Vulkan-Headers -B build -G Ninja "${cmake_options[@]}"
+  cmake --build build
+}
+
+check() {
+  ctest --test-dir build --output-on-failure --stop-on-failure
+}
+
+package() {
+  DESTDIR="$pkgdir" cmake --install build
+
+  python -m compileall -d /usr "$pkgdir/usr"
+  python -O -m compileall -d /usr "$pkgdir/usr"
+
+  install -Dm644 Vulkan-Headers/LICENSES/MIT.txt \
+    -t "$pkgdir/usr/share/licenses/$pkgname"
+}
+
+# vim:set sw=2 sts=-1 et:
