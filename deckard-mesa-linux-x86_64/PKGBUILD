@@ -1,0 +1,118 @@
+# This so that our mesa builds always happen in lockstep
+source ../deckard-mesa-linux-aarch64/mesa_common.pkgbuild
+
+pkgbase='deckard-mesa-linux-x86_64'
+pkgname=('deckard-mesa-linux-x86_64' 'deckard-mesa-linux-x86_64-assert')
+pkgdesc="An open-source implementation of the OpenGL specification, FEX x86_64 build"
+pkgver=${_pkgver:-1}
+pkgrel=${_pkgrel:-1}
+arch=('x86_64')
+makedepends=('git' 'openssh' 'python-mako' 'python-packaging' 'libxml2' 'libx11' 'xorgproto'
+             'python>=3.11' 'python-ply' 'python-yaml' 'wayland-protocols' 'elfutils'
+             'libclc' 'clang' 'systemd' 'valgrind' 'glslang' 'pkg-config'
+             'directx-headers' 'cmake' 'meson' 'bison' 'flex' 'libdisplay-info'
+
+             # 64-bit runtime dependencies
+             'libdrm' 'wayland' 'libxshmfence' 'libelf' 'zstd' 'vulkan-icd-loader' 'libxfixes' 'libglvnd' 'libxrandr' 'readline' 'libarchive' 'systemd-libs'
+
+             # 32-bit runtime dependencies
+             'lib32-libdrm' 'lib32-wayland' 'lib32-libxshmfence' 'lib32-libelf' 'lib32-zstd' 'lib32-vulkan-icd-loader' 'lib32-libxfixes' 'lib32-libglvnd' 'lib32-libxrandr' 'lib32-readline' 'lib32-libarchive' 'lib32-systemd'
+             'lib32-libdisplay-info'
+             )
+depends=()
+url="https://www.mesa3d.org/"
+license=('custom')
+options=('!lto')
+source=("mesa::git+https://github.com/evlav/deckard-mesa.git#commit=$_commit"
+        "LICENSE"
+        "linux-i386.cross"
+        "linux-x86_64.cross"
+        "graphics_provider.json")
+sha512sums=('SKIP'
+            'f9f0d0ccf166fe6cb684478b6f1e1ab1f2850431c06aa041738563eb1808a004e52cdec823c103c9e180f03ffc083e95974d291353f0220fe52ae6d4897fecc7'
+            '464dee6148d83bc9e49a4076895e5488d888f2ab904395a2052bf5ba4f25b209696b42bf3643736bdefe8c5b35b0ffc177c240626e41d9e5203e7ca656b0f907'
+            '57c782d285f6d89d45820b3684d0d2f893b69db0a794712baae1064ea16b92dc9fe89eeb7d2175786454db79e527ea7e4b8f480bc335be3c836cddb05c84b382'
+            'd6739342d2e636e2aa9959b3d84637a053ae2640d32148a512627e09f5d2c5f8d8783a66ae8d863a32d14874548087ce2bcaa1f8f460be33cb3aa68788ad434c')
+
+build() {
+  # Deckard:
+  #  - Allow wrap-based downloading of dependencies, because things like
+  #    perfetto are rather difficult to build for mesa, and we need them.
+  #    We will pass fixing these build recipes off to Collabora.
+  #  - Only build zink and freedreno
+  #  - Enable lots of tools like perfetto, valgrind
+  #  - Build once for x86_64, once for i386
+  MESON_OPTIONS=(
+    --prefix=/usr
+    --wrap-mode=default
+    -D android-libbacktrace=disabled
+    -D android-libperfetto=disabled
+    -D gallium-drivers=zink
+    -D gallium-va=disabled
+    -D gallium-mediafoundation=disabled
+    -D gbm=enabled
+    -D glvnd=enabled
+    -D glx-direct=true
+    -D glx=auto
+    -D gpuvis=true
+    -D intel-rt=disabled
+    -D llvm=disabled
+    -D libunwind=disabled
+    -D microsoft-clc=disabled
+    -D perfetto=true
+    -D platforms=x11,wayland
+    -D tools=freedreno,drm-shim
+    -D valgrind=enabled
+    -D vulkan-drivers=freedreno
+    -D vulkan-layers=vram-report-limit
+    -D tu-build-id="${_tu_build_id}"
+  )
+  arch-meson mesa build64 \
+    --buildtype=release \
+    -D b_ndebug=true \
+    --cross-file "${srcdir}/linux-x86_64.cross" \
+    "${MESON_OPTIONS[@]}"
+  ninja -C build64
+
+  arch-meson mesa build32 \
+    --buildtype=release \
+    -D b_ndebug=true \
+    --cross-file "${srcdir}/linux-i386.cross" \
+    "${MESON_OPTIONS[@]}"
+  ninja -C build32
+
+  # Assert builds
+  arch-meson mesa build64_assert \
+    --buildtype=debugoptimized \
+    -D b_ndebug=false \
+    --cross-file "${srcdir}/linux-x86_64.cross" \
+    "${MESON_OPTIONS[@]}"
+  ninja -C build64
+
+  arch-meson mesa build32_assert \
+    --buildtype=debugoptimized \
+    -D b_ndebug=false \
+    --cross-file "${srcdir}/linux-i386.cross" \
+    "${MESON_OPTIONS[@]}"
+  ninja -C build32
+}
+
+package_deckard-mesa-linux-x86_64() {
+  conflicts+=( 'deckard-mesa-linux-x86_64-assert' )
+  options+=( 'debug' 'strip' )
+  DESTDIR="${pkgdir}/usr/share/guestos/fex-mesa" meson install -C build64
+  DESTDIR="${pkgdir}/usr/share/guestos/fex-mesa" meson install -C build32
+
+  install -m644 -Dt "${pkgdir}/usr/share/licenses/${pkgbase}" LICENSE
+  install -m644 -Dt "${pkgdir}/usr/share/guestos/fex-mesa" graphics_provider.json
+}
+
+package_deckard-mesa-linux-x86_64-assert() {
+  conflicts+=( 'deckard-mesa-linux-x86_64' )
+  options+=( '!debug' '!strip' )
+  DESTDIR="${pkgdir}/usr/share/guestos/fex-mesa" meson install -C build64_assert
+  DESTDIR="${pkgdir}/usr/share/guestos/fex-mesa" meson install -C build32_assert
+
+  install -m644 -Dt "${pkgdir}/usr/share/licenses/${pkgbase}" LICENSE
+  install -m644 -Dt "${pkgdir}/usr/share/guestos/fex-mesa" graphics_provider.json
+}

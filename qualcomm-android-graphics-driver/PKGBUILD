@@ -1,0 +1,21 @@
+# Maintainer: Elliot Saba <sabae@valvesoftware.com>
+
+pkgname=qualcomm-android-graphics-driver
+_srctag=20250602.1
+pkgver=${_srctag//-/.}
+pkgrel=4
+arch=('any')
+license=('Apache-2.0')
+pkgdesc="Qualcomm graphics driver"
+url='https://github.com/evlav/qualcomm-android-graphics-driver/-/tree/$_srctag'
+depends=()
+sha512sums=('430bab19ab69a84646a2eec45557e35b1c639c97e66c77b2ea42e848190b0871bf2a0888c822a41c5e51b7f582a9db02275d62c2d4c4c5cbfcdba113476fd093')
+makedepends=('git' 'rsync' 'openssh')
+
+source=("git+https://github.com/evlav/qualcomm-android-graphics-driver.git#tag=$_srctag")
+
+package() {
+    android_prefix="${pkgdir}/usr/share/guestos/android"
+    mkdir -p "${android_prefix}/vendor"
+    rsync -a --exclude 'README.md' "${srcdir}"/${pkgname}/* "${android_prefix}/vendor"
+}

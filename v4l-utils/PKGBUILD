@@ -1,0 +1,40 @@
+# Maintainer: Thomas Bächler <thomas@archlinux.org>
+pkgname=v4l-utils
+_commit=95ad25f6a77a0a6650f5f657ac2c5046efcd04a0
+pkgver=1.33.0
+pkgrel=1.3
+pkgdesc="Userspace tools and conversion library for Video 4 Linux"
+arch=('x86_64' 'aarch64')
+url="https://linuxtv.org/"
+provides=("libv4l=$pkgver")
+replaces=('libv4l')
+conflicts=('libv4l')
+backup=(etc/rc_maps.cfg)
+license=('LGPL')
+depends=('hicolor-icon-theme' 'gcc-libs' 'libjpeg-turbo'  'systemd-libs' 'json-c')
+makedepends=('qt5-base' 'alsa-lib' 'meson' 'clang' 'doxygen' 'libbpf')
+optdepends=('qt5-base: for qv4l2 and qvidcap' 'alsa-lib: for qv4l2')
+source=("git+https://git.linuxtv.org/v4l-utils.git#commit=${_commit}"
+        "close-dlsym-fix.patch"
+        )
+sha256sums=('af65ceeef9b00265b7859d0f0ffdbad5ae85f08f72b2f30477e615b2c9e4d8ef'
+            '9794afae9214e723e2028f406634c93f720dfedc5cb865ea2ca6d8a51f6b5afe')
+validpgpkeys=('05D0169C26E41593418129DF199A64FADFB500FF') # Gregor Jasny <gjasny@googlemail.com>
+
+prepare() {
+  # HACK: inform upstream to make this configurable
+  cd "${pkgname}"
+  sed -i 's/sbin/bin/' utils/v4l2-dbg/meson.build
+  #TODO: upstream this patch
+  patch -p1 <"${srcdir}/close-dlsym-fix.patch"
+}
+
+build() {
+  arch-meson -Dgconv=disabled "${pkgname}" build
+  meson compile -C build
+}
+
+package() {
+  meson install -C build --destdir "$pkgdir"
+}
+

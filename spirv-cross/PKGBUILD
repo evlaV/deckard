@@ -1,0 +1,72 @@
+# Maintainer: Daniel Bermond <dbermond@archlinux.org>
+source ../vulkan-headers/vulkan_common.pkgbuild
+
+pkgname=spirv-cross
+pkgver="${_pkgver}"
+pkgrel="${_pkgrel}"
+epoch=1
+pkgdesc='A tool and library for parsing and converting SPIR-V to other shader languages'
+arch=('x86_64')
+url='https://github.com/KhronosGroup/SPIRV-Cross/'
+license=('Apache-2.0')
+depends=(
+    'gcc-libs'
+    'glibc')
+makedepends=(
+    'cmake'
+    'git'
+    'python')
+source=("git+https://github.com/KhronosGroup/SPIRV-Cross.git#tag=vulkan-sdk-${_pkgver}"
+        "git+https://github.com/KhronosGroup/glslang.git#tag=vulkan-sdk-${_pkgver}"
+        "${_spirv_tools_url}"
+        "${_spirv_headers_url}")
+sha256sums=('1a7aaa83f76a93e14c4ba8ec027d009739f9e62b4ec25dd3f245d32bc7a11325'
+            '6daf1c3811b4f68be560a762011c346e0414ebeb8908f8cb57517aec5c523822'
+            'a3e5d1f5dbefc057022d1c9c29315e887cb4c491dffb3ee850cbfaa3725ac9c1'
+            'c44aa584944201e4bb4ea5a301cd735c41b7fedeb717e8625b97cd9d7315a4b8')
+
+prepare() {
+    mkdir -p SPIRV-Cross/external/{glslang,spirv-tools}
+    
+    ln -sf "${srcdir}/glslang"       SPIRV-Cross/external/glslang
+    ln -sf "${srcdir}/SPIRV-Tools"   SPIRV-Cross/external/spirv-tools
+    ln -sf "${srcdir}/SPIRV-Headers" SPIRV-Tools/external/spirv-headers
+}
+
+build() {
+    # NOTE: test suite fails when using 'None' build type
+    local -a _common_opts=('-GUnix Makefiles' '-DCMAKE_BUILD_TYPE:STRING=Release' '-Wno-dev')
+    
+    export CFLAGS+=' -ffat-lto-objects'
+    export CXXFLAGS+=' -ffat-lto-objects'
+    
+    # glslang (required for tests)
+    cmake -B SPIRV-Cross/external/glslang-build -S glslang \
+        "${_common_opts[@]}" \
+        -DCMAKE_INSTALL_PREFIX:PATH='output' \
+        -DENABLE_OPT:BOOL='OFF'
+    cmake --build SPIRV-Cross/external/glslang-build --target install
+    
+    # spirv-tools (required for tests)
+    cmake -B SPIRV-Cross/external/spirv-tools-build -S SPIRV-Tools \
+        "${_common_opts[@]}" \
+        -DCMAKE_INSTALL_PREFIX:PATH='output' \
+        -DSPIRV_WERROR:BOOL='OFF'
+    cmake --build SPIRV-Cross/external/spirv-tools-build --target install
+    
+    # spirv-cross
+    cmake -B build-SPIRV-Cross -S SPIRV-Cross \
+        "${_common_opts[@]}" \
+        -DCMAKE_INSTALL_PREFIX:PATH='/usr' \
+        -DSPIRV_CROSS_FORCE_PIC:BOOL='ON' \
+        -DSPIRV_CROSS_SHARED:BOOL='ON'
+    cmake --build build-SPIRV-Cross
+}
+
+check() {
+    ctest --test-dir build-SPIRV-Cross --output-on-failure
+}
+
+package() {
+    DESTDIR="$pkgdir" cmake --install build-SPIRV-Cross
+}

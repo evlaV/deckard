@@ -1,0 +1,180 @@
+From 1f83fa17236c542d20d3cf866d1ed5bf627f9474 Mon Sep 17 00:00:00 2001
+From: Autumn Ashton <misyl@froggi.es>
+Date: Mon, 12 Jan 2026 10:54:39 +0000
+Subject: [PATCH] xwayland: Add _STEAMOS_TOUCH_POINTER_EMULATION
+
+Allows toggling touch pointer emulation  at runtime.
+---
+ dix/dix_priv.h                |  1 +
+ dix/touch.c                   |  1 +
+ hw/xwayland/xwayland-screen.c | 72 ++++++++++++++++++++++++++++++++++-
+ hw/xwayland/xwayland-screen.h |  1 +
+ hw/xwayland/xwayland.c        |  1 +
+ 5 files changed, 74 insertions(+), 2 deletions(-)
+
+diff --git a/dix/dix_priv.h b/dix/dix_priv.h
+index 43eb0c706..0a212a738 100644
+--- a/dix/dix_priv.h
++++ b/dix/dix_priv.h
+@@ -23,6 +23,7 @@ extern long maxBigRequestSize;
+ extern char dispatchExceptionAtReset;
+ extern int terminateDelay;
+ extern Bool touchEmulatePointer;
++extern Bool defaultTouchEmulatePointer;
+ 
+ extern HWEventQueuePtr checkForInput[2];
+ 
+diff --git a/dix/touch.c b/dix/touch.c
+index 44e615e0a..d03250124 100644
+--- a/dix/touch.c
++++ b/dix/touch.c
+@@ -44,6 +44,7 @@
+ 
+ #define TOUCH_HISTORY_SIZE 100
+ 
++Bool defaultTouchEmulatePointer = TRUE;
+ Bool touchEmulatePointer = TRUE;
+ 
+ /**
+diff --git a/hw/xwayland/xwayland-screen.c b/hw/xwayland/xwayland-screen.c
+index 7ab9174ec..5ab5182e2 100644
+--- a/hw/xwayland/xwayland-screen.c
++++ b/hw/xwayland/xwayland-screen.c
+@@ -64,6 +64,8 @@
+ #include "shmint.h"
+ #endif
+ 
++#include "dix_priv.h"
++
+ #include "xdg-output-unstable-v1-client-protocol.h"
+ #include "viewporter-client-protocol.h"
+ #include "xdg-shell-client-protocol.h"
+@@ -76,6 +78,55 @@ static DevPrivateKeyRec xwl_client_private_key;
+ 
+ #define DEFAULT_DPI 96
+ 
++static void
++xwl_set_touch_pointer_emulation(Bool allow, const char *debug_msg)
++{
++    touchEmulatePointer = allow;
++    DebugF("XWAYLAND: touch_pointer_emulation = %d (%s)\n", allow, debug_msg);
++}
++
++static void
++xwl_set_touch_pointer_emulation_from_property(struct xwl_screen *xwl_screen, PropertyPtr prop)
++{
++    static Bool warned = FALSE;
++    CARD32 *propdata;
++
++    if (prop->propertyName != xwl_screen->touch_pointer_emulation_prop)
++        FatalError("Xwayland internal error: prop mismatch in %s.\n", __func__);
++
++    if (prop->type != XA_CARDINAL || prop->format != 32 || prop->size != 1) {
++        /* Not properly set, so fall back to safe and glitchy */
++        xwl_set_touch_pointer_emulation(defaultTouchEmulatePointer, "WM fault");
++
++        if (!warned) {
++            LogMessageVerb(X_WARNING, 0, "Window manager is misusing property %s.\n",
++                           NameForAtom(prop->propertyName));
++            warned = TRUE;
++        }
++        return;
++    }
++
++    propdata = prop->data;
++    xwl_set_touch_pointer_emulation(!!propdata[0], "from property");
++}
++
++static void
++xwl_update_touch_pointer_emulation(struct xwl_screen *xwl_screen, PropertyStateRec *propstate)
++{
++    switch (propstate->state) {
++    case PropertyNewValue:
++        xwl_set_touch_pointer_emulation_from_property(xwl_screen, propstate->prop);
++        break;
++
++    case PropertyDelete:
++        xwl_set_touch_pointer_emulation(defaultTouchEmulatePointer, "property deleted");
++        break;
++
++    default:
++        break;
++    }
++}
++
+ _X_NORETURN
+ static void _X_ATTRIBUTE_PRINTF(1, 2)
+ xwl_give_up(const char *f, ...)
+@@ -171,12 +222,22 @@ xwl_property_callback(CallbackListPtr *pcbl, void *closure,
+     if (rec->win->drawable.pScreen != screen)
+         return;
+ 
++    xwl_screen = xwl_screen_get(screen);
++    if (!xwl_screen)
++        return;
++
++    /* XWAYLAND root window properties */
++    if (rec->win->parent == NULL) {
++        if (rec->prop->propertyName == xwl_screen->touch_pointer_emulation_prop) {
++            xwl_update_touch_pointer_emulation(xwl_screen, rec);
++            return;
++        }
++    }
++
+     xwl_window = xwl_window_get(rec->win);
+     if (!xwl_window)
+         return;
+ 
+-    xwl_screen = xwl_screen_get(screen);
+-
+     if (rec->prop->propertyName == xwl_screen->allow_commits_prop)
+         xwl_window_update_property(xwl_window, rec);
+ }
+@@ -855,6 +916,7 @@ Bool
+ xwl_screen_init(ScreenPtr pScreen, int argc, char **argv)
+ {
+     static const char allow_commits[] = "_XWAYLAND_ALLOW_COMMITS";
++    static const char touch_pointer_emulation[] = "_STEAMOS_TOUCH_POINTER_EMULATION";
+     struct xwl_screen *xwl_screen;
+     Pixel red_mask, blue_mask, green_mask;
+     int ret, bpc, green_bpc, i;
+@@ -1166,6 +1228,12 @@ xwl_screen_init(ScreenPtr pScreen, int argc, char **argv)
+     if (xwl_screen->allow_commits_prop == BAD_RESOURCE)
+         return FALSE;
+ 
++    xwl_screen->touch_pointer_emulation_prop = MakeAtom(touch_pointer_emulation,
++                                                           strlen(touch_pointer_emulation),
++                                                           TRUE);
++    if (xwl_screen->touch_pointer_emulation_prop == BAD_RESOURCE)
++        return FALSE;
++
+     AddCallback(&PropertyStateCallback, xwl_property_callback, pScreen);
+     AddCallback(&RootWindowFinalizeCallback, xwl_root_window_finalized_callback, pScreen);
+     XaceRegisterCallback(XACE_PROPERTY_ACCESS, xwl_access_property_callback, pScreen);
+diff --git a/hw/xwayland/xwayland-screen.h b/hw/xwayland/xwayland-screen.h
+index 9751bd25d..3429826b2 100644
+--- a/hw/xwayland/xwayland-screen.h
++++ b/hw/xwayland/xwayland-screen.h
+@@ -140,6 +140,7 @@ struct xwl_screen {
+     struct glamor_context *glamor_ctx;
+ 
+     Atom allow_commits_prop;
++    Atom touch_pointer_emulation_prop;
+ 
+     /* The preferred GLVND vendor. If NULL, "mesa" is assumed. */
+     const char *glvnd_vendor;
+diff --git a/hw/xwayland/xwayland.c b/hw/xwayland/xwayland.c
+index 81b8a7ec0..37859b501 100644
+--- a/hw/xwayland/xwayland.c
++++ b/hw/xwayland/xwayland.c
+@@ -242,6 +242,7 @@ ddxProcessArgument(int argc, char *argv[], int i)
+     }
+     else if (strcmp(argv[i], "-noTouchPointerEmulation") == 0) {
+         touchEmulatePointer = FALSE;
++        defaultTouchEmulatePointer = FALSE;
+         return 1;
+     }
+     else if (strcmp(argv[i], "-force-xrandr-emulation") == 0) {
+-- 
+2.52.0
+

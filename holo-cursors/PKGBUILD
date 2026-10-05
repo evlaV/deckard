@@ -1,0 +1,22 @@
+# Maintainer: Autumn Ashton (misyl@froggi.es)
+
+pkgname=holo-cursors
+_srctag=v2
+pkgver=2
+pkgrel=3
+arch=('any')
+url="https://github.com/evlav/holo-cursors"
+pkgdesc="Holo/SteamOS Cursors"
+license=('MIT')
+depends=()
+optdepends=()
+makedepends=('xorg-xcursorgen')
+source=("git+https://github.com/evlav/holo-cursors.git#tag=$_srctag")
+sha512sums=('c9fe772b9dd8d507202f24c85d3256776259768d21e2d43cac3b5cf98e61393bd978518ecfec3440a08e85be4d84e276660394ab0aab062c974b2634b38bfcce')
+
+package() {
+  rsync -a "$srcdir"/holo-cursors/* "$pkgdir"
+
+  cd $pkgdir/usr/share/holo/
+  xcursorgen $pkgdir/usr/share/holo/holo-cursor-config $pkgdir/usr/share/icons/steam/cursors/default
+}

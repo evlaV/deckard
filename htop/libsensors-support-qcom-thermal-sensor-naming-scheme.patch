@@ -1,0 +1,74 @@
+From 10d4c32f7039b90047f000e684f8a80899bbd701 Mon Sep 17 00:00:00 2001
+From: Gabe Rowe <gaber@valvesoftware.com>
+Date: Tue, 26 May 2026 14:10:19 -0700
+Subject: [PATCH 1/1] libsensors: support qcom thermal sensor naming scheme
+
+---
+ linux/LibSensors.c | 37 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
+
+diff --git a/linux/LibSensors.c b/linux/LibSensors.c
+index 53734161..a245468c 100644
+--- a/linux/LibSensors.c
++++ b/linux/LibSensors.c
+@@ -128,6 +128,27 @@ int LibSensors_reload(void) {
+    return sym_sensors_init(NULL);
+ }
+ 
++static bool isQcomCpuThermalPrefix(const char* prefix, unsigned int * cpu_idx) {
++   if (!String_startsWith(prefix, "cpu") || (strlen(prefix) < 6))
++      return false;
++
++   //get the cpu index from the 4th character -- cpu0_thermal for example
++   char c = prefix[3];
++   if (c < '0' || c > '7')
++      return false;
++
++   if(cpu_idx) {
++      *cpu_idx = c - '0' ;
++   }
++
++   const char* suffix = prefix + 4;
++
++   return String_eq(suffix, "_thermal") ||
++          String_eq(suffix, "_top_thermal") ||
++          String_eq(suffix, "_middle_thermal") ||
++          String_eq(suffix, "_bottom_thermal");
++}
++
+ static int tempDriverPriority(const sensors_chip_name* chip) {
+    static const struct TempDriverDefs {
+       const char* prefix;
+@@ -142,6 +163,9 @@ static int tempDriverPriority(const sensors_chip_name* chip) {
+       { "acpitz",      1 },
+    };
+ 
++   if (isQcomCpuThermalPrefix(chip->prefix,NULL))
++      return 0;
++
+    for (size_t i = 0; i < ARRAYSIZE(tempDrivers); i++)
+       if (String_eq(chip->prefix, tempDrivers[i].prefix))
+          return tempDrivers[i].priority;
+@@ -208,6 +232,19 @@ void LibSensors_getCPUTemperatures(CPUData* cpus, unsigned int existingCPUs, uns
+          if (r != 0)
+             continue;
+ 
++         {
++            unsigned int cpu_idx;
++            if ( isQcomCpuThermalPrefix(chip->prefix,&cpu_idx) ) {
++               if (cpu_idx < existingCPUs) {
++                  size_t idx = 1 + cpu_idx;
++                  //MAXIMUM finds the hottest of the various temps like cpu5_top_thermal, cpu5_bottom_thermal, etc
++                  data[idx] = isnan(data[idx]) ? temp : MAXIMUM(data[idx], temp);
++                  coreTempCount++;
++               }
++               continue;
++            }
++         }
++
+          /* If already set, e.g. Ryzen reporting platform temperature for each die, use the bigger one */
+          if (isNaN(data[tempID])) {
+             data[tempID] = temp;
+-- 
+2.43.0
+

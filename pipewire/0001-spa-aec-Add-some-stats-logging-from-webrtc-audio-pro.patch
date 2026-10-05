@@ -1,0 +1,62 @@
+From 261b1e51a2606b3e38624cb2016b8a6c1996a9fc Mon Sep 17 00:00:00 2001
+From: Arun Raghavan <arunr@valvesoftware.com>
+Date: Wed, 8 Jul 2026 09:37:47 -0700
+Subject: [PATCH] spa: aec: Add some stats logging from webrtc-audio-processing
+
+---
+ spa/plugins/aec/aec-webrtc.cpp | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
+
+diff --git a/spa/plugins/aec/aec-webrtc.cpp b/spa/plugins/aec/aec-webrtc.cpp
+index f148e2547b1c..2c507e04e6bc 100644
+--- a/spa/plugins/aec/aec-webrtc.cpp
++++ b/spa/plugins/aec/aec-webrtc.cpp
+@@ -60,6 +60,12 @@ struct impl_data {
+ 	std::unique_ptr<float *[]> play_buffer, rec_buffer, out_buffer;
+ 
+ 	uint32_t play_channels;
++
++#ifdef HAVE_WEBRTC2
++	// Log debug stats every log_interval blocks
++	int log_interval;
++	uint64_t blocks;
++#endif
+ };
+ 
+ SPA_LOG_TOPIC_DEFINE_STATIC(log_topic, "spa.aec.webrtc");
+@@ -239,6 +245,10 @@ static int webrtc_init2(void *object, const struct spa_dict *args,
+ 	config.transient_suppression.enabled = transient_suppression;
+ 	config.voice_detection.enabled = voice_detection;
+ #elif defined(HAVE_WEBRTC2)
++	impl->log_interval = 100; // default to logging every 1s
++	impl->blocks = 0;
++	webrtc_get_spa_int(impl, args, "webrtc.log_interval", &impl->log_interval);
++
+ 	bool gain_control1 = webrtc_get_spa_bool(args, "webrtc.gain_control1.enabled", gain_control);
+ 	bool gain_control2 = webrtc_get_spa_bool(args, "webrtc.gain_control2.enabled", gain_control);
+ 
+@@ -469,6 +479,21 @@ static int webrtc_run(void *object, const float *rec[], const float *play[], flo
+ 			spa_log_error(impl->log, "Processing stream failed: %d", res);
+ 		}
+ 	}
++
++#ifdef HAVE_WEBRTC2
++	if (impl->log_interval > 0 && (++impl->blocks) % impl->log_interval == 0) {
++		webrtc::AudioProcessingStats stats = impl->apm->GetStatistics();
++
++		spa_log_debug(impl->log, "delay: %d, res inst: %g, res max: %g, erl: %g, erle: %g, voice: %d",
++				stats.delay_ms.value_or(-1),
++				stats.residual_echo_likelihood.value_or(-1.0),
++				stats.residual_echo_likelihood_recent_max.value_or(-1.0),
++				stats.echo_return_loss.value_or(-1.0),
++				stats.echo_return_loss_enhancement.value_or(-1.0),
++				stats.voice_detected.value_or(-1));
++	}
++#endif
++
+ 	return 0;
+ }
+ 
+-- 
+2.55.0
+

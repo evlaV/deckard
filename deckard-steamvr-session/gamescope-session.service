@@ -1,0 +1,36 @@
+[Unit]
+Description=Gamescope VR Session
+Before=graphical-session.target
+PartOf=graphical-session.target
+Wants=graphical-session-pre.target
+After=graphical-session-pre.target
+RefuseManualStart=yes
+# The XDG desktop portal frontend relies on the value of $XDG_CURRENT_DESKTOP to
+# decide which backends to load, so its startup should be delayed until after
+# the session is running.
+Before=xdg-desktop-portal.service
+
+# This looks weird, but it ensures that if SteamVR exits, gamescope-session will also exit.
+PartOf=steamvr.service
+
+[Service]
+Slice=session.slice
+TimeoutStartSec=5
+TimeoutStopSec=10
+ExecStart=/usr/lib/steamos/gamescope-session
+Type=notify
+NotifyAccess=all
+
+# Make Steam's srt-logger write to the journal with it's own prefixes
+Environment=SRT_LOG_TO_JOURNAL=1
+
+# Include environment variables for mesa
+EnvironmentFile=/usr/share/deckard/mesavars.sh
+
+# We set `KillMode=mixed` so that we avoid sending `SIGTERM` to the `Xwayland` subprocesses,
+# since they are run in `-core` mode, which means they dump core if you so much as breathe
+# on them.
+KillMode=mixed
+
+
+

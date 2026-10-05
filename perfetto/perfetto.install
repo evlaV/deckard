@@ -1,0 +1,18 @@
+SYSTEMD_SCRIPTS=(
+	'perfetto-pps-producer.service'
+	'perfetto-traced-perf.service'
+	'perfetto-traced-probes.service'
+	'perfetto-traced.service'
+	'perfetto-websocket-bridge.service'
+)
+
+post_install() {
+    echo ":: Enabling and starting the perfetto-traced service."
+    systemctl enable --now "${SYSTEMD_SCRIPTS[@]}"
+}
+
+post_upgrade() {
+    echo ":: Restarting perfetto service..."
+    systemctl daemon-reload
+    systemctl restart "${SYSTEMD_SCRIPTS[@]}"
+}

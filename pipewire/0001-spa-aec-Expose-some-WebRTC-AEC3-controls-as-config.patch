@@ -1,0 +1,100 @@
+From 9ccd2a3e9a4d25d4c0bb291858cc49b3f08ebf35 Mon Sep 17 00:00:00 2001
+From: Arun Raghavan <arunr@valvesoftware.com>
+Date: Thu, 2 Jul 2026 13:59:44 -0700
+Subject: [PATCH 1/3] spa: aec: Expose some WebRTC AEC3 controls as config
+
+---
+ spa/plugins/aec/aec-webrtc.cpp | 63 ++++++++++++++++++++++++++++++++--
+ 1 file changed, 61 insertions(+), 2 deletions(-)
+
+diff --git a/spa/plugins/aec/aec-webrtc.cpp b/spa/plugins/aec/aec-webrtc.cpp
+index 982edbadb6e9..1e8d676246f3 100644
+--- a/spa/plugins/aec/aec-webrtc.cpp
++++ b/spa/plugins/aec/aec-webrtc.cpp
+@@ -23,6 +23,27 @@
+ #include <modules/audio_processing/include/audio_processing.h>
+ #endif
+ 
++#ifdef HAVE_WEBRTC2
++#include <modules/audio_processing/aec3/echo_canceller3.h>
++
++class CustomEchoControlFactory : public webrtc::EchoControlFactory {
++	public:
++		CustomEchoControlFactory(webrtc::EchoCanceller3Config config)
++			: config(std::move(config))
++		{
++		}
++
++		std::unique_ptr<webrtc::EchoControl> Create(int sample_rate_hz, int num_render_channels, int num_capture_channels) override
++		{
++			std::optional<webrtc::EchoCanceller3Config> multichannel_config;
++			return std::make_unique<webrtc::EchoCanceller3>(config, multichannel_config, sample_rate_hz, num_render_channels, num_capture_channels);
++		}
++
++	private:
++		webrtc::EchoCanceller3Config config;
++};
++#endif
++
+ struct impl_data {
+ 	struct spa_handle handle;
+ 	struct spa_audio_aec aec;
+@@ -58,6 +79,18 @@ static void webrtc_get_spa_int(struct impl_data *impl, const struct spa_dict *ar
+ 			spa_log_warn(impl->log, "Could not parse '%s'", key);
+ }
+ 
++static void webrtc_get_spa_sizet(struct impl_data *impl, const struct spa_dict *args, const char *key, size_t *value)
++{
++	int32_t val;
++
++	if (auto str = spa_dict_lookup(args, key)) {
++		if (!spa_atoi32(str, &val, 10))
++			spa_log_warn(impl->log, "Could not parse '%s'", key);
++		else
++			*value = val;
++	}
++}
++
+ static void webrtc_get_spa_float(struct impl_data *impl, const struct spa_dict *args, const char *key, float *value)
+ {
+ 	if (auto str = spa_dict_lookup(args, key))
+@@ -290,8 +323,34 @@ static int webrtc_init2(void *object, const struct spa_dict *args,
+ 	auto apm = std::unique_ptr<webrtc::AudioProcessing>(webrtc::AudioProcessingBuilder().Create());
+ 	apm->ApplyConfig(config);
+ #elif defined(HAVE_WEBRTC2)
+-	auto apm = webrtc::AudioProcessingBuilder().Create();
+-	apm->ApplyConfig(config);
++	auto builder = webrtc::AudioProcessingBuilder();
++	auto factory = std::unique_ptr<webrtc::EchoControlFactory>(nullptr);
++
++	if (webrtc_get_spa_bool(args, "webrtc.aec3.custom", false)) {
++		webrtc::EchoCanceller3Config aec3_config;
++
++		webrtc_get_spa_sizet(impl, args, "webrtc.aec3.filter.refined.length_blocks", &aec3_config.filter.refined.length_blocks);
++		webrtc_get_spa_sizet(impl, args, "webrtc.aec3.filter.refined_initial.length_blocks", &aec3_config.filter.refined_initial.length_blocks);
++		webrtc_get_spa_sizet(impl, args, "webrtc.aec3.filter.coarse.length_blocks", &aec3_config.filter.coarse.length_blocks);
++		webrtc_get_spa_sizet(impl, args, "webrtc.aec3.filter.coarse_initial.length_blocks", &aec3_config.filter.coarse_initial.length_blocks);
++		webrtc_get_spa_sizet(impl, args, "webrtc.aec3.delay.num_filters", &aec3_config.delay.num_filters);
++		webrtc_get_spa_sizet(impl, args, "webrtc.aec3.delay.down_sampling_factor", &aec3_config.delay.down_sampling_factor);
++		aec3_config.delay.detect_pre_echo = webrtc_get_spa_bool(args, "webrtc.aec3.delay.detect_pre_echo", aec3_config.delay.detect_pre_echo);
++		aec3_config.echo_model.model_reverb_in_nonlinear_mode =
++			webrtc_get_spa_bool(args, "webrtc.aec3.echo_model.model_reverb_in_nonlinear_mode", aec3_config.echo_model.model_reverb_in_nonlinear_mode);
++
++		if (!webrtc::EchoCanceller3Config::Validate(&aec3_config)) {
++			spa_log_error(impl->log, "AEC3 config is invalid");
++			return -EINVAL;
++		}
++
++		factory = std::make_unique<CustomEchoControlFactory>(aec3_config);
++	}
++
++	auto apm = builder
++		.SetConfig(config)
++		.SetEchoControlFactory(std::move(factory))
++		.Create();
+ #endif
+ 
+ 	if ((res = apm->Initialize(pconfig)) != webrtc::AudioProcessing::kNoError) {
+-- 
+2.55.0
+

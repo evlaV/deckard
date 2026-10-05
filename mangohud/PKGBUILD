@@ -1,0 +1,140 @@
+# Maintainer: Simon Hallsten <flightlessmangoyt@gmail.com>
+# Contributor: Emil Velikov <emil.l.velikov@gmail.com>
+
+pkgname=('mangohud')
+_commit=e5d31119b521775de01ec41154c3ddb0a4c8c0cb
+pkgver=0.8.4.r179.ge5d31119
+pkgrel=1
+epoch=1
+pkgdesc="Vulkan and OpenGL overlay to display performance information"
+url="https://github.com/flightlessmango/MangoHud"
+arch=(x86_64 aarch64)
+license=(MIT)
+replaces=('vulkan-mesa-layer-mango')
+makedepends=(
+  dbus
+  git
+  glew
+  glfw-x11
+  glslang
+  libglvnd
+  libx11
+  libxnvctrl
+  libxrandr
+  'meson>=1.4.0'
+  nlohmann-json
+  python
+  python-mako
+)
+
+depends=(
+  bash # for mangohud script
+  dbus # media player info
+  glew # for mangoapp
+  glfw-x11 # for mangoapp
+  libcap
+  libdrm
+  libglvnd # for GL overlay
+  libtracefs
+  libx11 # for mangoapp
+  libxkbcommon
+  spdlog
+  vulkan-icd-loader
+  wayland
+)
+
+source=(
+  "mangohud"::"git+https://github.com/flightlessmango/MangoHud.git#commit=$_commit"
+  "imgui-1.91.6.tar.gz::https://github.com/ocornut/imgui/archive/refs/tags/v1.91.6.tar.gz"
+  "implot-v0.16.zip::https://github.com/epezent/implot/archive/refs/tags/v0.16.zip"
+  "implot-v0.16-1-wrap.zip::https://wrapdb.mesonbuild.com/v2/implot_0.16-1/get_patch"
+  "vulkan-headers-1.4.346.tar.gz::https://github.com/KhronosGroup/Vulkan-Headers/archive/v1.4.346.tar.gz"
+  "vulkan-utility-libraries-1.4.346.tar.gz::https://github.com/KhronosGroup/Vulkan-Utility-Libraries/archive/v1.4.346.tar.gz"
+  "0001-meson-support-1.4-without-mangohud-next.patch"
+)
+
+sha256sums=('SKIP'
+            'c5fbc5dcab1d46064001c3b84d7a88812985cde7e0e9ced03f5677bec1ba502a'
+            '24f772c688f6b8a6e19d7efc10e4923a04a915f13d487b08b83553aa62ae1708'
+            '1c6b1462066a5452fa50c1da1dd47fed841f28232972c82d778f2962936568c7'
+            '5bb77f5d7b460e255a9e51affc00d64354986b55cf577d8eab28529cad01fc80'
+            '372eb525103ecb4e3a04d030b2a9778ebc67853bbdc82ce6747de3757d432ad9'
+            '857f1f8c376ffeb33de803cce07d81be7f6c924666aaf5000f60b75630bb55f1')
+
+# Get `download_git` available for use
+source /usr/share/makepkg/util/source.sh
+source /usr/share/makepkg/source/git.sh
+pkgver() {
+  # This to allow `pkgver()` to work from `find_unbuilt_packages.sh`
+  if [[ -d mangohud ]]; then
+    cd mangohud
+  else
+    if [[ ! -v "startdir" ]]; then
+      startdir="$(pwd)"
+    fi
+    download_git "${source[0]}" >/dev/null
+    cd "$(get_filepath "${source[0]}")"
+  fi
+  git describe --tags "$_commit" | sed -r 's/^v//;s/([^-]*-g)/r\1/;s/-/./g'
+}
+
+prepare() {
+  cd mangohud
+
+  # needed until we reach Meson 1.7.0
+  patch -Np1 < "$srcdir/0001-meson-support-1.4-without-mangohud-next.patch"
+
+  # meson subprojects
+  ln -sfnv "$srcdir/imgui-1.91.6" subprojects/imgui-1.91.6
+  cp -rv subprojects/packagefiles/imgui-1.91.6/. subprojects/imgui-1.91.6/
+  ln -sfv "$srcdir/implot-0.16" subprojects
+  ln -sfnv "$srcdir/Vulkan-Headers-1.4.346" subprojects/Vulkan-Headers-1.4.346
+  cp -rv subprojects/packagefiles/vulkan-headers/. subprojects/Vulkan-Headers-1.4.346/
+  ln -sfnv "$srcdir/Vulkan-Utility-Libraries-1.4.346" subprojects/Vulkan-Utility-Libraries-1.4.346
+  cp -rv subprojects/packagefiles/vulkan-utility-libraries/. subprojects/Vulkan-Utility-Libraries-1.4.346/
+}
+
+build() {
+  local meson_options=(
+    -D append_libdir_mangohud=false
+    -D use_system_spdlog=enabled
+    -D mangoapp=true
+    -D mangohudctl=true
+    -D with_xnvctrl=disabled
+    -D with_nvml=disabled
+    -D tests=disabled
+    -D with_fex=true
+    -D with_mangohud_next=false
+  )
+
+  arch-meson mangohud build64 "${meson_options[@]}"
+  meson compile -C build64
+}
+
+package_mangohud() {
+  conflicts=('mangohud-common')
+  meson install -C build64 --destdir "$pkgdir"
+  install -m644 -Dt "$pkgdir/usr/share/licenses/$pkgname" mangohud/LICENSE
+}
+
+# Disabled for aarch64
+# package_lib32-mangohud() {
+#   depends=(
+#     lib32-glibc
+#     lib32-gcc-libs
+#   )
+#   # XXX: should really be optdepends
+#   depends+=(
+#     lib32-dbus # media player info
+#     lib32-libglvnd # for GL overlay
+#   )
+
+#   meson install -C build32 --destdir "$pkgdir"
+#   install -m644 -Dt "$pkgdir/usr/share/licenses/$pkgname" mangohud/LICENSE
+
+#   rm -rf "$pkgdir/usr/bin"
+#   rm -rf "$pkgdir/usr/share/doc"
+#   rm -rf "$pkgdir/usr/share/icons"
+#   rm -rf "$pkgdir/usr/share/man"
+#   rm -rf "$pkgdir/usr/share/metainfo"
+# }

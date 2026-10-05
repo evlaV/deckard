@@ -1,0 +1,42 @@
+pkgname=passt
+pkgver=2026_06_11.a9c61ff
+pkgrel=7
+pkgdesc="Plug A Simple Socket Transport"
+arch=(x86_64 aarch64)
+url="https://passt.top/passt/about/"
+license=(
+  BSD-3-Clause
+  GPL-2.0-or-later
+)
+depends=(glibc)
+optdepends=(
+  'sh: for demo script'
+)
+source=(
+	"$pkgname-$pkgver::git://passt.top/passt#tag=$pkgver"
+	"0001-Don-t-exclude-ephemeral-ports-in-scan-mode.patch"
+)
+sha512sums=('4e96e5f5d42a00fa1213af72f695937a3e39d766d48fd0a256c56debb6414b624e23de32f8e6037535de884bd81ade06f621ba108bc1af1b7d0fd260fd7450b2'
+            'b6574fb6f1437a76099e18ea4c71ce73b99c6246332ca24cb7693053b3c0aed38da0e6dcc97c35f53f6d436c81d6f7d255e334df60a940630a1fdf17ff7fbe74')
+
+prepare() {
+  cd passt-$pkgver
+
+  local src
+  for src in "${source[@]}"; do
+    [[ $src = *.patch ]] || continue
+    src="${src##*/}"
+    echo "Applying patch $src..."
+    patch -Np1 < "../$src"
+  done
+}
+
+build() {
+  make VERSION="$pkgver" -C $pkgname-$pkgver
+}
+
+package() {
+  make DESTDIR="$pkgdir/" prefix=/usr install -C $pkgname-$pkgver
+  install -vDm 644 $pkgname-$pkgver/LICENSES/* -t "$pkgdir/usr/share/licenses/$pkgname/"
+}
+

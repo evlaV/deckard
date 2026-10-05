@@ -1,0 +1,101 @@
+From 53a8e587227145f20da592bb410401b8f0bbcf64 Mon Sep 17 00:00:00 2001
+From: Vivek Das Mohapatra <vivek@collabora.com>
+Date: Wed, 1 Oct 2025 19:58:36 +0000
+Subject: [PATCH 2/2] aarch64: Re-enable -mtune=native and enable multi-core
+ native tuning
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Commit 06f64b95bafc disabled -mtune=native as it made
+host_detect_local_cpu give up if processed_exts was unset,
+but processed_exts was never set if -mtune=… was passed.
+
+Additionally only 1 or 2 core (implementer + part id) type
+systems were supported. This patch extends support to 3
+core type systems (as long as all systems have the same
+features).
+
+The feature set equivalence of all present core types is
+not enforced or checked here, merely assumed.
+---
+ gcc/config/aarch64/driver-aarch64.cc | 28 ++++++++++++++--------------
+ 1 file changed, 14 insertions(+), 14 deletions(-)
+
+diff --git a/gcc/config/aarch64/driver-aarch64.cc b/gcc/config/aarch64/driver-aarch64.cc
+index 875aed6f0bdd..fe0d75d69ff5 100644
+--- a/gcc/config/aarch64/driver-aarch64.cc
++++ b/gcc/config/aarch64/driver-aarch64.cc
+@@ -226,19 +226,16 @@ readline (FILE *f)
+   return result;
+ }
+ 
+-/*  Return true iff ARR contains CORE, in either of the two elements. */
++/*  Return true iff ARR contains CORE, stopping at the first INVALID_CORE. */
+ 
+ static bool
+ contains_core_p (unsigned *arr, unsigned core)
+ {
+-  if (arr[0] != INVALID_CORE)
+-    {
+-      if (arr[0] == core)
+-        return true;
++  unsigned int i = 0;
+ 
+-      if (arr[1] != INVALID_CORE)
+-        return arr[1] == core;
+-    }
++  for (i = 0; arr[i] != INVALID_CORE; i++)
++    if (arr[i] == core)
++      return true;
+ 
+   return false;
+ }
+@@ -270,9 +267,9 @@ host_detect_local_cpu (int argc, const char **argv)
+   bool cpu = false;
+   unsigned int i = 0;
+   unsigned char imp = INVALID_IMP;
+-  unsigned int cores[3] = { INVALID_CORE, INVALID_CORE, INVALID_CORE };
++  unsigned int cores[4] = { INVALID_CORE, INVALID_CORE, INVALID_CORE, INVALID_CORE };
+   unsigned int n_cores = 0;
+-  unsigned int variants[3] = { ALL_VARIANTS, ALL_VARIANTS, ALL_VARIANTS };
++  unsigned int variants[4] = { ALL_VARIANTS, ALL_VARIANTS, ALL_VARIANTS, ALL_VARIANTS };
+   unsigned int n_variants = 0;
+   bool processed_exts = false;
+   aarch64_feature_flags extension_flags = 0;
+@@ -340,6 +337,7 @@ host_detect_local_cpu (int argc, const char **argv)
+ 	  unsigned ccore = parse_field (buf);
+ 	  if (!contains_core_p (cores, ccore))
+ 	    {
++	      /* Already found 3 cores and we don't support a 4th.  */
+ 	      if (n_cores == 3)
+ 		goto not_found;
+ 
+@@ -396,9 +394,9 @@ host_detect_local_cpu (int argc, const char **argv)
+ 
+   /* Weird cpuinfo format that we don't know how to handle.  */
+   if (n_cores == 0
+-      || n_cores > 2
++      || n_cores > 3
+       || imp == INVALID_IMP
+-      || !processed_exts)
++      || (!tune && !processed_exts))
+     goto not_found;
+ 
+   /* If we have one core type but multiple variants, consider
+@@ -406,8 +404,10 @@ host_detect_local_cpu (int argc, const char **argv)
+   if (n_cores == 1 && n_variants != 1)
+     variants[0] = ALL_VARIANTS;
+ 
+-  /* Simple case, one core type or just looking for the arch. */
+-  if (n_cores == 1 || arch)
++  /* Either a simple case, one core type or just looking for the arch,
++     OR a non-big.little heterogenous multicore setup. All cores should
++     have the same features so use the first core for tuning.  */
++  if (n_cores == 1 || n_cores > 2 || arch)
+     {
+       /* Search for one of the cores in the list. */
+       for (i = 0; aarch64_cpu_data[i].name != NULL; i++)
+-- 
+2.39.5
+

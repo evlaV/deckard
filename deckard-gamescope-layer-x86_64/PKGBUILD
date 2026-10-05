@@ -1,0 +1,61 @@
+# This so that our gamescope builds always happen in lockstep
+source ../gamescope/gamescope_common.pkgbuild
+
+pkgname=deckard-gamescope-layer-x86_64
+pkgver=${_pkgver:-1}
+pkgrel="${_pkgrel:-1}"
+pkgdesc="Gamescope WSI layer for x86_64"
+arch=(x86_64)
+url="https://github.com/ValveSoftware/gamescope"
+license=('MIT')
+depends=()
+makedepends=(openssh git meson cmake wayland-protocols ninja glslang glm vulkan-headers benchmark 'libavif' 'aom' 'rav1e' 'libxres' 'xcb-util-errors' 'freerdp' 'xcb-util-wm' 'libxcomposite' 'pixman' 'libinput' 'seatd' 'pipewire' 'libxmu' 'libxcursor' 'libdecor' 'libei' 'luajit' clang)
+source=("git+https://github.com/ValveSoftware/gamescope.git#commit=${_commit}"
+        "git+https://gitlab.freedesktop.org/wlroots/wlroots.git"
+        "git+https://gitlab.freedesktop.org/emersion/libliftoff.git"
+        # FIXME Upstream gamescope is just selecting master branch at build time, so we are arbitrarily snapshotting a
+        #       revision when bumping the version here such that the build is reproducible.
+        "git+https://github.com/nothings/stb.git#commit=af1a5bc352164740c1cc1354942b1c6b72eacb8a"
+        "git+https://github.com/g-truc/glm.git#commit=0af55ccecd98d4e5a8d1fad7de25ba429d60e863"
+        "git+https://github.com/Joshua-Ashton/vkroots.git#commit=5106d8a0df95de66cc58dc1ea37e69c99afc9540"
+        "git+https://github.com/ValveSoftware/openvr.git#commit=ebd425331229365dc3ec42d1bb8b2cc3c2332f81")
+sha256sums=('SKIP'
+            'SKIP'
+            'SKIP'
+            'e39e0c91b297bfd707afcda84ecdc15a08c22e2ad4c347fc3533b1ed98fb3f85'
+            '85f3e55fb527e9853bd4fc31300253587198831660a743eaa55f6b40fe1b9c90'
+            '2bf3901caf740286ae4333b20628b3ea834a95c8c976f3e06647694a97d68fd1'
+            'd0a6ba96cd4b7718f7849f925168b871bfa355642be278c87d5ba1e2b755ffe1')
+
+prepare() {
+    cd gamescope
+
+    # git submodules
+    git submodule init
+    git config submodule.subprojects/wlroots.url "$srcdir/wlroots"
+    git config submodule.subprojects/vkroots.url "$srcdir/vkroots"
+    git config submodule.subprojects/libliftoff.url "$srcdir/libliftoff"
+    git config submodule.subprojects/openvr.url "$srcdir/openvr"
+    git -c protocol.file.allow=always submodule update
+
+    # meson subprojects
+    for SUBPROJ in stb glm; do
+        rm -rf subprojects/${SUBPROJ}
+        git clone "${srcdir}/${SUBPROJ}" subprojects/${SUBPROJ}
+        cp -av subprojects/packagefiles/${SUBPROJ}/* subprojects/${SUBPROJ}/ # patch from the .wrap we elided
+    done
+}
+
+build() {
+    mkdir build
+    arch-meson --buildtype release --prefix /usr -Denable_gamescope=false -Denable_gamescope_wsi_layer=true gamescope build
+    ninja -C build
+}
+
+package() {
+    FEX_ROOTFS="${pkgdir}/usr/share/guestos/fex-mesa"
+    DESTDIR="${FEX_ROOTFS}" meson install -C build --skip-subprojects
+
+    # Don't install the gamescope lua scripts
+    rm -rf "${FEX_ROOTFS}/usr/share/gamescope"
+}

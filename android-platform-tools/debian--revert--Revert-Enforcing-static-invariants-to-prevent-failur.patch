@@ -1,0 +1,90 @@
+Description: Revert "Enforcing static invariants to prevent failures
+ arising from layout"
+ This reverts commit f4e573399592c89b9a35451cb2f39fc6a6e0c6f2.
+Forwarded: not-needed
+--- a/packages/modules/adb/client/adb_wifi.cpp
++++ b/packages/modules/adb/client/adb_wifi.cpp
+@@ -19,7 +19,6 @@
+ #include <fstream>
+ #include <random>
+ #include <thread>
+-#include <type_traits>
+ 
+ #include <adb/crypto/key.h>
+ #include <adb/crypto/x509_generator.h>
+@@ -49,8 +48,6 @@ struct PairingResultWaiter {
+         {
+             std::lock_guard<std::mutex> lock(p->mutex_);
+             if (peer_info) {
+-                static_assert(std::is_standard_layout<struct PeerInfo>());
+-                static_assert(std::is_standard_layout<struct PairingResultWaiter>());
+                 memcpy(&(p->peer_info_), peer_info, sizeof(PeerInfo));
+             }
+             p->is_valid_ = (peer_info != nullptr);
+@@ -214,8 +211,6 @@ void adb_wifi_pair_device(const std::string& host, const std::string& password,
+     system_info.type = ADB_RSA_PUB_KEY;
+     std::string public_key = adb_auth_get_userkey();
+     CHECK_LE(public_key.size(), sizeof(system_info.data) - 1);  // -1 for null byte
+-
+-    static_assert(std::is_standard_layout<uint8_t>());
+     memcpy(system_info.data, public_key.data(), public_key.size());
+ 
+     auto pswd8 = stringToUint8(password);
+--- a/packages/modules/adb/client/usb_osx.cpp
++++ b/packages/modules/adb/client/usb_osx.cpp
+@@ -264,6 +264,7 @@ AndroidInterfaceAdded(io_iterator_t iterator)
+                 int langCount = (req.wLenDone - 2) / 2, lang;
+ 
+                 for (lang = 1; lang <= langCount; lang++) {
++
+                     memset(buffer, 0, sizeof(buffer));
+                     memset(&req, 0, sizeof(req));
+ 
+--- a/packages/modules/adb/types.h
++++ b/packages/modules/adb/types.h
+@@ -20,7 +20,6 @@
+ 
+ #include <algorithm>
+ #include <memory>
+-#include <type_traits>
+ #include <utility>
+ #include <vector>
+ 
+@@ -98,7 +97,6 @@ struct Block {
+     const char& operator[](size_t idx) const { return data()[idx]; }
+ 
+     bool operator==(const Block& rhs) const {
+-        static_assert(std::is_standard_layout<Block>());
+         return size() == rhs.size() && memcmp(data(), rhs.data(), size()) == 0;
+     }
+ 
+@@ -232,7 +230,6 @@ struct IOVector {
+ 
+         size_t offset = 0;
+         iterate_blocks([&offset, &result](const char* data, size_t len) {
+-            static_assert(std::is_standard_layout<CollectionType>());
+             memcpy(&result[offset], data, len);
+             offset += len;
+         });
+--- a/packages/modules/adb/types_test.cpp
++++ b/packages/modules/adb/types_test.cpp
+@@ -19,7 +19,6 @@
+ #include <gtest/gtest.h>
+ 
+ #include <memory>
+-#include <type_traits>
+ #include <utility>
+ 
+ #include "fdevent/fdevent_test.h"
+@@ -31,11 +30,7 @@ static IOVector::block_type create_block(const std::string& string) {
+ static IOVector::block_type create_block(char value, size_t len) {
+     auto block = IOVector::block_type();
+     block.resize(len);
+-
+-    static_assert(std::is_standard_layout<struct Block>());
+-    static_assert(std::is_standard_layout<struct IOVector>());
+     memset(&(block)[0], value, len);
+-
+     return block;
+ }
+ 

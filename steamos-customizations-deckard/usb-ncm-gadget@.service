@@ -1,0 +1,39 @@
+[Unit]
+Description=USB network gadget %i
+
+# Run this after USB gadget is setup, but before binding
+After=usb-gadget-init.service
+Requires=usb-gadget-init.service
+Before=usb-gadget.service
+
+# Ask for dnsmasq to start up, but only after we're ready
+Wants=usb-ncm-dnsmasq@%i.service
+Before=usb-ncm-dnsmasq@%i.service
+
+# If the gadget gets stopped stop us too
+PartOf=usb-gadget.service
+
+# Ensure that usbfunc:ecm is loaded/available
+After=modprobe@usbfunc:ecm.service
+Wants=modprobe@usbfunc:ecm.service
+
+
+# This is a special file that `steamos-devkit-mode` creates to enable us
+ConditionPathExists=|/etc/systemd/system/adbd.service.d/steamos-devkit-enabled
+
+# u-boot can disable us if need be (e.g. USB Serial debugging)
+ConditionPathExists=!/proc/device-tree/chosen/u-boot,disable-ncm
+
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+
+EnvironmentFile=/run/usb-gadget-tools/env
+WorkingDirectory=/sys/kernel/config/usb_gadget
+
+ExecStart=/usr/share/deckard/usb-ncm-gadget.sh start %i
+ExecStop=/usr/share/deckard/usb-ncm-gadget.sh stop %i
+
+[Install]
+WantedBy=usb-gadget.target

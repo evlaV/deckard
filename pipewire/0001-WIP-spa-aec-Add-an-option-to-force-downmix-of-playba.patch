@@ -1,0 +1,98 @@
+From 437c3f2b3cf7203bc3c9e9ed38e641f8c1a117a3 Mon Sep 17 00:00:00 2001
+From: Arun Raghavan <arunr@valvesoftware.com>
+Date: Fri, 3 Jul 2026 10:08:43 -0700
+Subject: [PATCH 2/3] WIP spa: aec: Add an option to force downmix of playback
+
+---
+ spa/plugins/aec/aec-webrtc.cpp | 36 +++++++++++++++++++++++++++-------
+ 1 file changed, 29 insertions(+), 7 deletions(-)
+
+diff --git a/spa/plugins/aec/aec-webrtc.cpp b/spa/plugins/aec/aec-webrtc.cpp
+index 1e8d676246f3..f148e2547b1c 100644
+--- a/spa/plugins/aec/aec-webrtc.cpp
++++ b/spa/plugins/aec/aec-webrtc.cpp
+@@ -58,6 +58,8 @@ struct impl_data {
+ 	spa_audio_info_raw out_info;
+ 	spa_audio_info_raw play_info;
+ 	std::unique_ptr<float *[]> play_buffer, rec_buffer, out_buffer;
++
++	uint32_t play_channels;
+ };
+ 
+ SPA_LOG_TOPIC_DEFINE_STATIC(log_topic, "spa.aec.webrtc");
+@@ -240,11 +242,14 @@ static int webrtc_init2(void *object, const struct spa_dict *args,
+ 	bool gain_control1 = webrtc_get_spa_bool(args, "webrtc.gain_control1.enabled", gain_control);
+ 	bool gain_control2 = webrtc_get_spa_bool(args, "webrtc.gain_control2.enabled", gain_control);
+ 
++	// Allow forcing mono for AEC
++	impl->play_channels = webrtc_get_spa_bool(args, "webrtc.force_mono_echo_reference", false) ? 1 : play_info->channels;
++
+ 	webrtc::AudioProcessing::Config config;
+ 	config.echo_canceller.enabled = true;
+ 	config.echo_canceller.mobile_mode = mobile_mode;
+ 	config.pipeline.multi_channel_capture = rec_info->channels > 1;
+-	config.pipeline.multi_channel_render = play_info->channels > 1;
++	config.pipeline.multi_channel_render = impl->play_channels > 1;
+ 	config.high_pass_filter.enabled = high_pass_filter;
+ 	config.noise_suppression.enabled = noise_suppression;
+ 	config.noise_suppression.level = webrtc::AudioProcessing::Config::NoiseSuppression::kHigh;
+@@ -307,8 +312,8 @@ static int webrtc_init2(void *object, const struct spa_dict *args,
+ 	webrtc::ProcessingConfig pconfig = {{
+ 		webrtc::StreamConfig(rec_info->rate, rec_info->channels), /* input stream */
+ 		webrtc::StreamConfig(out_info->rate, out_info->channels), /* output stream */
+-		webrtc::StreamConfig(play_info->rate, play_info->channels), /* reverse input stream */
+-		webrtc::StreamConfig(play_info->rate, play_info->channels), /* reverse output stream */
++		webrtc::StreamConfig(play_info->rate, impl->play_channels), /* reverse input stream */
++		webrtc::StreamConfig(play_info->rate, impl->play_channels), /* reverse output stream */
+ 	}};
+ #endif
+ 
+@@ -378,7 +383,14 @@ static int webrtc_init2(void *object, const struct spa_dict *args,
+ 	impl->rec_info = *rec_info;
+ 	impl->out_info = *out_info;
+ 	impl->play_info = *play_info;
+-	impl->play_buffer = std::make_unique<float *[]>(play_info->channels);
++	if (impl->play_channels == impl->play_info.channels) {
++		// Use planar buffers as provided
++		impl->play_buffer = std::make_unique<float *[]>(impl->play_channels);
++	} else {
++		// Allocate a buffer for downmix
++		impl->play_buffer = std::make_unique<float *[]>(1);
++		impl->play_buffer[0] = new float[impl->play_info.rate * 10 / 1000];
++	}
+ 	impl->rec_buffer = std::make_unique<float *[]>(rec_info->channels);
+ 	impl->out_buffer = std::make_unique<float *[]>(out_info->channels);
+ 	return 0;
+@@ -411,7 +423,7 @@ static int webrtc_run(void *object, const float *rec[], const float *play[], flo
+ 		webrtc::StreamConfig(impl->out_info.rate, impl->out_info.channels, false);
+ #elif defined(HAVE_WEBRTC2)
+ 	webrtc::StreamConfig play_config =
+-		webrtc::StreamConfig(impl->play_info.rate, impl->play_info.channels);
++		webrtc::StreamConfig(impl->play_info.rate, impl->play_channels);
+ 	webrtc::StreamConfig rec_config =
+ 		webrtc::StreamConfig(impl->rec_info.rate, impl->rec_info.channels);
+ 	webrtc::StreamConfig out_config =
+@@ -425,8 +437,18 @@ static int webrtc_run(void *object, const float *rec[], const float *play[], flo
+ 	}
+ 
+ 	for (size_t i = 0; i < num_blocks; i ++) {
+-		for (size_t j = 0; j < impl->play_info.channels; j++)
+-			impl->play_buffer[j] = const_cast<float *>(play[j]) + play_config.num_frames() * i;
++		if (impl->play_channels == impl->play_info.channels) {
++			for (size_t j = 0; j < impl->play_info.channels; j++)
++				impl->play_buffer[j] = const_cast<float *>(play[j]) + play_config.num_frames() * i;
++		} else {
++			// For downmix to mono
++			for (size_t j = 0; j < play_config.num_frames(); j++) {
++				impl->play_buffer[0][j] = 0;
++				for (size_t k = 0; k < impl->play_info.channels; k++)
++					impl->play_buffer[0][j] += (const_cast<float *>(play[k]) + play_config.num_frames() * i)[j];
++				impl->play_buffer[0][j] /= impl->play_info.channels;
++			}
++		}
+ 		for (size_t j = 0; j < impl->rec_info.channels; j++)
+ 			impl->rec_buffer[j] = const_cast<float *>(rec[j]) + rec_config.num_frames() * i;
+ 		for (size_t j = 0; j < impl->out_info.channels; j++)
+-- 
+2.55.0
+

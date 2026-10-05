@@ -1,0 +1,24 @@
+[Unit]
+Description=perfetto websocket bridge
+
+# Require traced, and stop us if it stops
+Requires=perfetto-traced.service
+PartOf=perfetto-traced.service
+
+[Service]
+Type=simple
+Restart=always
+
+# Allow port 8037 through, so that we can capture perfetto traces
+ExecStartPre=-/usr/bin/firewall-cmd --zone=public --add-port=8037/tcp
+ExecStartPre=-/usr/bin/firewall-cmd --zone=nm-shared --add-port=8037/tcp
+
+ExecStart=/usr/bin/tracebox websocket_bridge --http-additional-cors-origins=https://deckard.pages.steamos.cloud
+
+[Install]
+WantedBy=multi-user.target
+Also=perfetto-traced.service
+Also=perfetto-traced-probes.service
+Also=perfetto-traced-perf.service
+Also=perfetto-pps-producer.service
+Also=perfetto-websocket-bridge.service

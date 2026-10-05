@@ -1,0 +1,14 @@
+#!/bin/bash
+# mkinitcpio post hook: wrap the initramfs built from our presets (see the
+# `linux-*-deckard.install` scriptlets in our kernel packages) in a U-Boot
+# legacy image header.
+# Arguments: <kernel image> <initramfs image> [<UKI>]
+set -euo pipefail
+
+INITRD="${2:-}"
+UIMAGE="/boot/initrd.uImage"
+
+mkimage -A arm64 -O linux -T ramdisk -C none -d "${INITRD}" "${UIMAGE}.tmp"
+chmod 644 "${UIMAGE}.tmp"
+mv -f "${UIMAGE}.tmp" "${UIMAGE}"
+rm -f "${INITRD}"

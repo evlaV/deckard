@@ -1,0 +1,163 @@
+From 7e7c784425d53e5f43867ddf394b5e6f1d9450e5 Mon Sep 17 00:00:00 2001
+From: Arun Raghavan <arunr@valvesoftware.com>
+Date: Thu, 2 Jul 2026 13:57:12 -0700
+Subject: [PATCH] Expose AEC3 header in API
+
+Makes it possible to provide a custom echo control factory (makes it
+possible at the very least to override default AEC3 config).
+---
+ meson.build                                 |  6 +++-
+ webrtc/api/meson.build                      |  2 ++
+ webrtc/common_audio/meson.build             | 12 +++++++
+ webrtc/modules/audio_processing/meson.build | 38 +++++++++++++++++----
+ webrtc/rtc_base/meson.build                 |  5 +++
+ 5 files changed, 56 insertions(+), 7 deletions(-)
+
+diff --git a/meson.build b/meson.build
+index 3465c4ef6168..2be0e70ad0fb 100644
+--- a/meson.build
++++ b/meson.build
+@@ -203,13 +203,17 @@ pkgconfig.generate(
+   requires: pc_requires,
+   extra_cflags: [
+     '-DWEBRTC_LIBRARY_IMPL',
++    '-DWEBRTC_APM_DEBUG_DUMP=0',
+   ] + platform_cflags,
+ )
+ 
+ audio_processing_dep = declare_dependency(
+   link_with: libwebrtc_audio_processing,
+   dependencies: [absl_dep],
+-  include_directories: [webrtc_inc]
++  include_directories: [webrtc_inc],
++  compile_args: [
++    '-DWEBRTC_LIBRARY_IMPL',
++  ] + platform_cflags,
+ )
+ 
+ meson.override_dependency(apm_project_name, audio_processing_dep)
+diff --git a/webrtc/api/meson.build b/webrtc/api/meson.build
+index b6686f19ca55..5ecd10a6ba6d 100644
+--- a/webrtc/api/meson.build
++++ b/webrtc/api/meson.build
+@@ -23,6 +23,8 @@ api_headers = [
+   ['', 'scoped_refptr.h'],
+   ['audio', 'audio_processing.h'],
+   ['audio', 'audio_processing_statistics.h'],
++  ['audio', 'audio_view.h'],
++  ['audio', 'channel_layout.h'],
+   ['audio', 'echo_canceller3_config.h'],
+   ['audio', 'echo_control.h'],
+   ['task_queue', 'task_queue_base.h'],
+diff --git a/webrtc/common_audio/meson.build b/webrtc/common_audio/meson.build
+index d38a799ee5e7..1027a638c24b 100644
+--- a/webrtc/common_audio/meson.build
++++ b/webrtc/common_audio/meson.build
+@@ -55,6 +55,11 @@ common_audio_sources = [
+   'vad/webrtc_vad.c',
+ ]
+ 
++common_audio_headers = [
++  ['', 'channel_buffer.h'],
++  ['include', 'audio_util.h'],
++]
++
+ arch_libs = []
+ if have_x86
+   arch_libs += [
+@@ -130,6 +135,13 @@ if not have_arm
+   ]
+ endif
+ 
++foreach h : common_audio_headers
++  install_headers(
++    join_paths(h[0], h[1]),
++    subdir: join_paths(include_subdir, 'common_audio', h[0])
++  )
++endforeach
++
+ libcommon_audio = static_library('common_audio',
+     common_audio_sources,
+     dependencies: common_deps,
+diff --git a/webrtc/modules/audio_processing/meson.build b/webrtc/modules/audio_processing/meson.build
+index 78fc970d09bd..219342f737c9 100644
+--- a/webrtc/modules/audio_processing/meson.build
++++ b/webrtc/modules/audio_processing/meson.build
+@@ -145,9 +145,32 @@ webrtc_audio_processing_sources = [
+   'vad/voice_activity_detector.cc',
+ ]
+ 
+-webrtc_audio_processing_include_headers = [
+-  'include/audio_processing.h',
+-  'include/audio_processing_statistics.h',
++webrtc_audio_processing_headers = [
++  ['', 'audio_buffer.h'],
++  ['include', 'audio_processing.h'],
++  ['include', 'audio_processing_statistics.h'],
++  ['aec3', 'aec3_common.h'],
++  ['aec3', 'api_call_jitter_metrics.h'],
++  ['aec3', 'block.h'],
++  ['aec3', 'block_buffer.h'],
++  ['aec3', 'block_delay_buffer.h'],
++  ['aec3', 'block_framer.h'],
++  ['aec3', 'block_processor.h'],
++  ['aec3', 'config_selector.h'],
++  ['aec3', 'delay_estimate.h'],
++  ['aec3', 'downsampled_render_buffer.h'],
++  ['aec3', 'echo_canceller3.h'],
++  ['aec3', 'echo_path_variability.h'],
++  ['aec3', 'echo_remover.h'],
++  ['aec3', 'fft_buffer.h'],
++  ['aec3', 'fft_data.h'],
++  ['aec3', 'frame_blocker.h'],
++  ['aec3', 'multi_channel_content_detector.h'],
++  ['aec3', 'render_buffer.h'],
++  ['aec3', 'render_delay_buffer.h'],
++  ['aec3', 'render_delay_controller.h'],
++  ['aec3', 'spectrum_buffer.h'],
++  ['logging', 'apm_data_dumper.h'],
+ ]
+ 
+ extra_libs = []
+@@ -186,9 +209,12 @@ if neon_opt.enabled()
+   ]
+ endif
+ 
+-install_headers(webrtc_audio_processing_include_headers,
+-    subdir: join_paths(include_subdir, 'modules', 'audio_processing', 'include')
+-)
++foreach h : webrtc_audio_processing_headers
++  install_headers(
++    join_paths(h[0], h[1]),
++    subdir: join_paths(include_subdir, 'modules', 'audio_processing', h[0])
++  )
++endforeach
+ 
+ libwebrtc_audio_processing = library(apm_project_name,
+     webrtc_audio_processing_sources,
+diff --git a/webrtc/rtc_base/meson.build b/webrtc/rtc_base/meson.build
+index bcaf8d1e45f0..120843bed35c 100644
+--- a/webrtc/rtc_base/meson.build
++++ b/webrtc/rtc_base/meson.build
+@@ -25,13 +25,18 @@ base_sources = [
+ base_headers = [
+   [ '', 'arraysize.h' ],
+   [ '', 'checks.h' ],
++  [ '', 'gtest_prod_util.h' ],
++  [ '', 'platform_thread_types.h' ],
++  [ '', 'race_checker.h' ],
+   [ '', 'ref_count.h' ],
++  [ '', 'swap_queue.h' ],
+   [ '', 'thread_annotations.h' ],
+   [ '', 'type_traits.h' ],
+   [ 'numerics', 'divide_round.h' ],
+   [ 'numerics', 'safe_compare.h' ],
+   [ 'numerics', 'safe_conversions.h' ],
+   [ 'numerics', 'safe_conversions_impl.h' ],
++  [ 'system', 'arch.h' ],
+   [ 'system', 'file_wrapper.h' ],
+   [ 'system', 'inline.h' ],
+   [ 'system', 'rtc_export.h' ],
+-- 
+2.55.0
+

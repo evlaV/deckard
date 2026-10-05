@@ -1,0 +1,36 @@
+# Maintainer: Gabe Rowe (gaber@valvesoftware.com)
+
+pkgname=steamos-efi
+_srctag=20260122.2
+pkgver=${_srctag}
+pkgrel=3
+arch=('x86_64' 'aarch64')
+url='https://github.com/evlav/deckard-steamos-efi'
+pkgdesc='Stage 1 bootloader for SteamOS 3+'
+license=('GPL2')
+depends=('efibootmgr' 'util-linux' 'coreutils')
+makedepends=('git' 'openssh' 'gnu-efi-libs' 'grub' 'fontconfig' 'noto-fonts')
+source=(
+	"git+https://github.com/evlav/deckard-steamos-efi.git#tag=${_srctag}"
+	'steamos-bootconf'
+	)
+sha512sums=('SKIP'
+            '8844ca98c97e9a60d5a83cb2faadaf2e9ef52769b324284710aa2f3773816d259c84e2798a705db0d1d09fdd635acf1742e26c86c918dabb00635aef0e8bcdc6')
+
+build() {
+	cd "${pkgname}"
+	autoreconf -vif
+	./configure --prefix=/usr --with-release-version="$pkgver"
+	make
+}
+
+package() {
+	cd "${pkgname}"
+	make DESTDIR="$pkgdir/" install
+	mv "$pkgdir/usr/sbin/"* "$pkgdir/usr/bin/"
+	rmdir "$pkgdir/usr/sbin/"
+
+	# Move the main `steamos-bootconf` executable out of the way, replace it with our shell script wrapper
+	install -TDm755 "${pkgdir}/usr/bin/steamos-bootconf" "${pkgdir}/usr/lib/steamos-efi/steamos-bootconf"
+	install -TDm755 "${srcdir}/steamos-bootconf" "${pkgdir}/usr/bin/steamos-bootconf"
+}

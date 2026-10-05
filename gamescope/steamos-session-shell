@@ -1,0 +1,7 @@
+#!/bin/bash
+
+if [ "$#" -gt 0 ]; then
+    exec systemd-run --user --pty --collect --wait --service-type=exec --same-dir --quiet -- "$@"
+else
+    exec systemd-run --user --shell --quiet
+fi

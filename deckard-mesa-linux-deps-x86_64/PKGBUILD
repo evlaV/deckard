@@ -1,0 +1,65 @@
+# Maintainer: Elliot Saba <sabae@valvesoftware.com>
+
+pkgname=deckard-mesa-linux-deps-x86_64
+pkgver=20260820
+pkgrel=4
+arch=('x86_64')
+license=('Various')
+pkgdesc="Bundle of dependencies needed for FEX mesa rootfs shard"
+url='https://github.com/evlav/holo'
+depends=()
+makedepends=('pacman')
+options=( '!debug' '!strip' )
+
+package() {
+    # This list of packages is literally the dependencies of `deckard-mesa-linux-x86_64`
+    CACHEDIR=$(mktemp -d)
+    FEX_ROOTFS="${pkgdir}/usr/share/guestos/fex-mesa"
+    mkdir -p /tmp/cache /tmp/db "${FEX_ROOTFS}"
+
+    # 64-bit dependencies
+    MESA_DEPS=(
+        'mesa' 'vulkan-icd-loader' 'libdisplay-info'
+    )
+    # Add 32-bit versions
+    for DEP in "${MESA_DEPS[@]}"; do
+        MESA_DEPS+=( "lib32-${DEP}" )
+    done
+    # Special snowflake
+    MESA_DEPS+=( 'systemd-libs' 'lib32-systemd' )
+    pacman -Sy --noconfirm --root "${FEX_ROOTFS}" --cachedir /tmp/cache --dbpath /tmp/db "${MESA_DEPS[@]}"
+
+    #remove mesa -- but keep all of it's dependencies to allow us to install our own mesa version later
+    pacman --noconfirm --root "${FEX_ROOTFS}" --cachedir /tmp/cache --dbpath /tmp/db -Rdd mesa lib32-mesa
+
+    for d in boot dev efi esp home media mnt opt proc root run srv sys tmp var/lock var/run var/tmp; do
+        rm -rf "${FEX_ROOTFS}/${d}"
+    done
+
+    # Various more items to delete to save space and/or remove problems.
+    ITEMS_TO_DELETE=(
+      'usr/share/locale'
+      'usr/share/man'
+      'usr/share/doc'
+      'usr/share/i18n'
+      'usr/include'
+      'etc/ca-certificates'
+      'etc/pacman.d'
+      'var/lib/pacman'
+      'var/cache'
+      'var/log'
+      'usr/lib/dbus-daemon-launch-helper'
+      'etc/hosts'
+      'etc/resolv.conf'
+      'etc/passwd'
+      'etc/group'
+      'etc/shadow'
+      'etc/gshadow'
+    )
+
+    for item in "${ITEMS_TO_DELETE[@]}"; do
+        rm -rf "${FEX_ROOTFS}/${item}"
+    done
+
+    ldconfig -r "${FEX_ROOTFS}"
+}

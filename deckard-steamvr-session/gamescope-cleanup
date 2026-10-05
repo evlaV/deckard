@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -euo pipefail
+
+source /usr/lib/steamos/gamescope-env-list
+
+# Cleanup our environment.
+
+# dbus activation environment uses eg. DISPLAY= in the list to clear out.
+dbus-update-activation-environment "${gamescope_inherit_vars[@]/%/=}"
+# systemd uses unset-environment.
+systemctl --user unset-environment "${gamescope_inherit_vars[@]}"
+unset "${gamescope_inherit_vars[@]}"

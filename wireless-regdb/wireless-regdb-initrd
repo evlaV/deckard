@@ -1,0 +1,14 @@
+#!/bin/bash
+
+build() {
+    add_file /usr/lib/firmware/regulatory.db
+    add_file /usr/lib/firmware/regulatory.db.p7s
+}
+
+help() {
+    cat <<HELPEOF
+This hook adds wireless regulatory database information
+HELPEOF
+}
+
+# vim: set ft=sh ts=4 sw=4 et:

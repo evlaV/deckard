@@ -1,0 +1,40 @@
+#!/bin/sh
+
+TARGET="${1:-gamescope-session.target}"
+
+systemctl --user stop graphical-session.target
+systemctl --user reset-failed
+
+# SDDM sets this to wayland but apps using Gamescope must use x11
+export XDG_SESSION_TYPE=x11
+
+# Update the enviroment with DESKTOP_SESSION and all XDG variables
+dbus-update-activation-environment --systemd DESKTOP_SESSION `env | grep ^XDG_ | cut -d = -f 1`
+
+# This makes it so that xdg-desktop-portal only looks for the portal
+# implementations this session wants and doesn't try to start other
+# irrelevant ones. holo and gamescope provide most interfaces, and kde
+# is included for FileChooser, which neither of them implements.
+# Plasma resets this variable when it starts.
+systemctl --user set-environment XDG_DESKTOP_PORTAL_DIR="/usr/share/xdg-desktop-portal/gamescope-portals"
+
+# This tells `gamescope-session` whether to launch expecting steam or not
+systemctl --user set-environment "GAMESCOPE_SESSION_TARGET=${TARGET}"
+
+# Remove these as they prevent gamescope-session from starting correctly
+systemctl --user unset-environment DISPLAY XAUTHORITY
+
+# If this shell script is killed then stop gamescope-session
+trap "systemctl --user stop ${TARGET}" HUP INT TERM
+
+# Start gamescope-session and wait
+systemctl --user --wait start "${TARGET}" &
+wait
+logger Gamescope Session Ended - Performing Final Cleanup
+
+# The 'wait' above blocks until ${TARGET} stops
+# We want to wait until *everything* has finished. We know systemd will have
+# queued a stop job on graphical-session-pre aleady
+# by also queuing up a job we can block until that completes
+systemctl --user stop graphical-session-pre.target
+logger Gamescope Session Ended - Cleanup Complete

@@ -1,0 +1,34 @@
+Description: Address FTBFS with GCC-14
+Bug-Debian: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1074811
+Author: tony mancill <tmancill@debian.org>
+
+--- a/packages/modules/adb/client/incremental_utils.cpp
++++ b/packages/modules/adb/client/incremental_utils.cpp
+@@ -24,6 +24,7 @@
+ #include <ziparchive/zip_archive.h>
+ #include <ziparchive/zip_writer.h>
+ 
++#include <algorithm>
+ #include <array>
+ #include <cinttypes>
+ #include <numeric>
+--- a/system/core/fs_mgr/liblp/super_layout_builder.cpp
++++ b/system/core/fs_mgr/liblp/super_layout_builder.cpp
+@@ -17,6 +17,7 @@
+ 
+ #include <liblp/liblp.h>
+ 
++#include <algorithm>
+ #include "images.h"
+ #include "utility.h"
+ #include "writer.h"
+--- a/system/core/fs_mgr/liblp/utility.cpp
++++ b/system/core/fs_mgr/liblp/utility.cpp
+@@ -25,6 +25,7 @@
+ #include <sys/ioctl.h>
+ #endif
+ 
++#include <algorithm>
+ #include <map>
+ #include <string>
+ #include <vector>

@@ -1,0 +1,57 @@
+# Author : Clayton Craft <clayton@igalia.com>
+
+pkgname='steamos-systemreport'
+pkgver=0.24
+pkgrel=4
+pkgdesc='System report collection tool'
+arch=('any')
+license=('LGPL2.1')
+url='https://github.com/evlav/holo'
+source=(
+  'steamos-systemreport'
+  'steamos-systemreport-privileged'
+  'com.steampowered.SteamOS.systemreport.policy'
+)
+sha256sums=('b35a09085c8eb63fe0bb4c9738ed83c07f5efba8ea6efa7b0a894218bb10a6f8'
+            '4f6afcfd92f384b03a0de07413025fe9cfa074c1323614e12081c5d603acfb03'
+            'b36473e3b77307450e75c59e248dde34d95b69c6c765a425fc30d9e201e23067')
+
+package() {
+  depends=(
+    'bash'
+    'bluez-deprecated-tools'         # hcitool
+    'coreutils'                      # dd
+    'rauc'                           # rauc status
+    'upower'                         # upower
+    'wireplumber'                    # wpctl
+    'iputils'                        # ping
+    'iproute2'                       # ip
+    'iwd'                            # iwctl
+    'pciutils'                       # lspci
+    'usbutils'                       # lsusb
+    'systemd'                        # coredumpctl, journalctl
+    'procps-ng'                      # ps
+    'util-linux'                     # lsblk, hexdump
+    'parted'                         # parted
+    'smartmontools'                  # smartctl
+    'polkit'
+    'zstd'
+  )
+
+  if [[ "${CARCH}" == "x86_64" ]]; then
+    depends+=(
+      'drm_info'                       # drm_info
+      'steamos-customizations-jupiter' # steamos-{readonly,dump-info}
+      'jupiter-hw-support'             # amd_system_info
+    )
+  elif [[ "${CARCH}" == "aarch64" ]]; then
+    depends+=(
+      'steamos-customizations-deckard' # steamos-{readonly,dump-info}
+    )
+  fi
+
+  install -Dm755 steamos-systemreport -t "$pkgdir"/usr/bin/
+  install -Dm755 steamos-systemreport-privileged -t "$pkgdir"/usr/bin/steamos-polkit-helpers
+  install -m755 -d "$pkgdir"/usr/share/polkit-1/actions
+  install -m644 com.steampowered.SteamOS.systemreport.policy -t "$pkgdir"/usr/share/polkit-1/actions
+}

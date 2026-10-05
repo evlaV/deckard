@@ -1,0 +1,16 @@
+[Unit]
+Description=perfetto traced service
+
+[Service]
+Type=simple
+Restart=always
+Environment=PERFETTO_PRODUCER_SOCK_NAME=/tmp/perfetto-producer,0.0.0.0:20000
+ExecStart=/usr/bin/tracebox traced --set-socket-permissions=perf:0660:perf:0660 --enable-relay-endpoint
+
+[Install]
+WantedBy=multi-user.target
+Also=perfetto-traced.service
+Also=perfetto-traced-probes.service
+Also=perfetto-traced-perf.service
+Also=perfetto-pps-producer.service
+Also=perfetto-websocket-bridge.service

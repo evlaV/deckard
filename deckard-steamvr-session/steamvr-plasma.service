@@ -1,0 +1,14 @@
+[Unit]
+Description=Plasma starter
+PartOf=graphical-session.target
+After=graphical-session.target
+Requires=steamvr.service
+After=steamvr.service
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/startplasma-wayland
+Slice=session.slice
+TimeoutStopSec=5
+
+EnvironmentFile=/usr/share/deckard/mesavars.sh

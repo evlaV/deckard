@@ -1,0 +1,28 @@
+[Unit]
+Description=Android Debug Bridge (ADB) daemon
+Wants=sys-kernel-config.mount
+After=sys-kernel-config.mount
+DefaultDependencies=no
+
+Requires=adbd-pre.service
+After=adbd-pre.service
+Requires=dev-usb\x2dffs-adb.mount
+After=dev-usb\x2dffs-adb.mount
+
+# If the gadget gets stopped stop us too
+PartOf=usb-gadget.service
+
+[Service]
+Restart=always
+Type=notify
+ExecStart=/usr/lib/android-sdk/platform-tools/adbd
+
+[Install]
+WantedBy=usb-gadget.target
+
+# When adding or removing this service, also add or remove these services (include self for easy copy-paste):
+Also=adbd-pre.service
+Also=adbd-post.service
+Also=adbd.service
+Also=dev-usb\\x2dffs-adb.mount
+

@@ -1,0 +1,26 @@
+From 3c3613c10421d3f9633df2d98d901b6812c47c11 Mon Sep 17 00:00:00 2001
+From: Arun Raghavan <arunr@valvesoftware.com>
+Date: Tue, 19 May 2026 16:31:36 -0700
+Subject: [PATCH 1/3] spa: aec: webrtc: Actually enable adaptive analog control
+ in AGC2
+
+Without this, we only get a fixed 0dB gain + compressor.
+---
+ spa/plugins/aec/aec-webrtc.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/spa/plugins/aec/aec-webrtc.cpp b/spa/plugins/aec/aec-webrtc.cpp
+index 7b8cafcde489..422a7369101c 100644
+--- a/spa/plugins/aec/aec-webrtc.cpp
++++ b/spa/plugins/aec/aec-webrtc.cpp
+@@ -199,6 +199,7 @@ static int webrtc_init2(void *object, const struct spa_dict *args,
+ 	config.gain_controller1.enabled = gain_control;
+ 	config.gain_controller1.mode = webrtc::AudioProcessing::Config::GainController1::Mode::kAdaptiveDigital;
+ 	config.gain_controller2.enabled = gain_control;
++	config.gain_controller2.adaptive_digital.enabled = gain_control;
+ 	config.high_pass_filter.enabled = high_pass_filter;
+ 	config.noise_suppression.enabled = noise_suppression;
+ 	config.noise_suppression.level = webrtc::AudioProcessing::Config::NoiseSuppression::kHigh;
+-- 
+2.54.0
+

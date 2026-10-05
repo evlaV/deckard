@@ -1,0 +1,561 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: https://android.googlesource.com/platform/external/boringssl
+Upstream-Name: BoringSSL
+Comment:
+ Updated by referencing result of:
+ $ decopy -v --group-by copyright --output debian/copyright.decopy
+
+Files: *
+Copyright: 1998-2011, The OpenSSL Project
+License: OpenSSL and SSLeay
+
+Files: src/crypto/asn1/*
+       src/crypto/base64/base64.c
+       src/crypto/bio/bio.c
+       src/crypto/bio/bio_mem.c
+       src/crypto/bio/connect.c
+       src/crypto/bio/fd.c
+       src/crypto/bio/file.c
+       src/crypto/bio/hexdump.c
+       src/crypto/bio/internal.h
+       src/crypto/bio/printf.c
+       src/crypto/bio/socket.c
+       src/crypto/bn_extra/convert.c
+       src/crypto/buf/buf.c
+       src/crypto/cipher_extra/cipher_extra.c
+       src/crypto/cipher_extra/derive_key.c
+       src/crypto/cipher_extra/e_des.c
+       src/crypto/cipher_extra/e_null.c
+       src/crypto/cipher_extra/e_rc2.c
+       src/crypto/cipher_extra/e_rc4.c
+       src/crypto/cipher_extra/internal.h
+       src/crypto/conf/conf.c
+       src/crypto/conf/conf_def.h
+       src/crypto/constant_time_test.cc
+       src/crypto/cpu_intel.c
+       src/crypto/des/*
+       src/crypto/dh_extra/*
+       src/crypto/digest_extra/digest_extra.c
+       src/crypto/dsa/dsa.c
+       src/crypto/dsa/dsa_test.cc
+       src/crypto/err/err.c
+       src/crypto/evp/evp.c
+       src/crypto/evp/evp_asn1.c
+       src/crypto/evp/evp_ctx.c
+       src/crypto/evp/internal.h
+       src/crypto/evp/sign.c
+       src/crypto/ex_data.c
+       src/crypto/fipsmodule/bn/add.c
+       src/crypto/fipsmodule/bn/asm/*
+       src/crypto/fipsmodule/bn/bn.c
+       src/crypto/fipsmodule/bn/bn_test.cc
+       src/crypto/fipsmodule/bn/bn_tests.txt
+       src/crypto/fipsmodule/bn/bytes.c
+       src/crypto/fipsmodule/bn/cmp.c
+       src/crypto/fipsmodule/bn/div.c
+       src/crypto/fipsmodule/bn/generic.c
+       src/crypto/fipsmodule/bn/miller_rabin_tests.txt
+       src/crypto/fipsmodule/bn/mul.c
+       src/crypto/fipsmodule/bn/shift.c
+       src/crypto/fipsmodule/cipher/cipher.c
+       src/crypto/fipsmodule/cipher/internal.h
+       src/crypto/fipsmodule/dh/*
+       src/crypto/fipsmodule/digest/digest.c
+       src/crypto/fipsmodule/digest/digests.c
+       src/crypto/fipsmodule/digest/internal.h
+       src/crypto/fipsmodule/hmac/hmac.c
+       src/crypto/fipsmodule/md4/md4.c
+       src/crypto/fipsmodule/md5/md5.c
+       src/crypto/fipsmodule/rsa/internal.h
+       src/crypto/fipsmodule/rsa/rsa_impl.c
+       src/crypto/fipsmodule/rsa/rsa.c
+       src/crypto/fipsmodule/sha/sha1-altivec.c
+       src/crypto/fipsmodule/sha/sha1.c
+       src/crypto/fipsmodule/sha/sha256.c
+       src/crypto/fipsmodule/sha/sha512.c
+       src/crypto/hmac_extra/*
+       src/crypto/internal.h
+       src/crypto/lhash/internal.h
+       src/crypto/lhash/lhash.c
+       src/crypto/mem.c
+       src/crypto/obj/*
+       src/crypto/pem/*
+       src/crypto/rc4/rc4.c
+       src/crypto/rsa_extra/*
+       src/crypto/stack/stack.c
+       src/crypto/thread.c
+       src/crypto/x509/*
+       src/decrepit/bio/base64_bio.c
+       src/decrepit/blowfish/blowfish.c
+       src/decrepit/cast/cast.c
+       src/decrepit/cast/cast_tables.c
+       src/decrepit/cast/internal.h
+       src/decrepit/des/cfb64ede.c
+       src/decrepit/macros.h
+       src/decrepit/rc4/rc4_decrepit.c
+       src/decrepit/ripemd/ripemd.c
+       src/decrepit/rsa/rsa_decrepit.c
+       src/decrepit/ssl/ssl_decrepit.c
+       src/include/openssl/asn1.h
+       src/include/openssl/base64.h
+       src/include/openssl/bio.h
+       src/include/openssl/blowfish.h
+       src/include/openssl/bn.h
+       src/include/openssl/buf.h
+       src/include/openssl/cast.h
+       src/include/openssl/cipher.h
+       src/include/openssl/conf.h
+       src/include/openssl/cpu.h
+       src/include/openssl/des.h
+       src/include/openssl/dh.h
+       src/include/openssl/digest.h
+       src/include/openssl/dsa.h
+       src/include/openssl/err.h
+       src/include/openssl/evp.h
+       src/include/openssl/evp_errors.h
+       src/include/openssl/ex_data.h
+       src/include/openssl/hmac.h
+       src/include/openssl/lhash.h
+       src/include/openssl/md4.h
+       src/include/openssl/md5.h
+       src/include/openssl/mem.h
+       src/include/openssl/nid.h
+       src/include/openssl/obj.h
+       src/include/openssl/pem.h
+       src/include/openssl/rc4.h
+       src/include/openssl/ripemd.h
+       src/include/openssl/rsa.h
+       src/include/openssl/sha.h
+       src/include/openssl/ssl.h
+       src/include/openssl/ssl3.h
+       src/include/openssl/stack.h
+       src/include/openssl/thread.h
+       src/include/openssl/tls1.h
+       src/include/openssl/type_check.h
+       src/include/openssl/x509.h
+       src/include/openssl/x509_vfy.h
+       src/ssl/bio_ssl.cc
+       src/ssl/ssl_asn1.cc
+       src/ssl/ssl_c_test.c
+       src/ssl/ssl_privkey.cc
+       src/ssl/ssl_stat.cc
+       src/ssl/tls_method.cc
+Copyright: 1995-1998, Eric Young <eay@cryptsoft.com>
+           2014-2021, Google Inc
+           2005, Nokia
+           2002, Sun Microsystems, Inc
+           1995-2017, The OpenSSL Project
+License: SSLeay
+
+Files: crypto_test_data.cc
+       err_data.c
+       rules.mk
+       src/.clang-format
+       src/.github/*
+       src/.gitignore
+       src/BUILDING.md
+       src/CMakeLists.txt
+       src/codereview.settings
+       src/CONTRIBUTING.md
+       src/crypto/asn1/asn1_test.cc
+       src/crypto/base64/base64_test.cc
+       src/crypto/bio/bio_test.cc
+       src/crypto/bio/socket_helper.c
+       src/crypto/bn_extra/bn_asn1.c
+       src/crypto/bytestring/*
+       src/crypto/chacha/*
+       src/crypto/cipher_extra/aead_test.cc
+       src/crypto/cipher_extra/e_aesctrhmac.c
+       src/crypto/cipher_extra/e_aesgcmsiv.c
+       src/crypto/cipher_extra/e_chacha20poly1305.c
+       src/crypto/cipher_extra/e_tls.c
+       src/crypto/cipher_extra/test/nist_cavp/make_cavp.go
+       src/crypto/compiler_test.cc
+       src/crypto/conf/internal.h
+       src/crypto/cpu_aarch64_linux.c
+       src/crypto/cpu_arm_linux.c
+       src/crypto/cpu_arm.c
+       src/crypto/cpu_ppc64le.c
+       src/crypto/crypto.c
+       src/crypto/curve25519/*
+       src/crypto/digest_extra/digest_test.cc
+       src/crypto/engine/*
+       src/crypto/err/err_data_generate.go
+       src/crypto/err/err_test.cc
+       src/crypto/evp/evp_extra_test.cc
+       src/crypto/evp/p_ed25519_asn1.c
+       src/crypto/evp/p_ed25519.c
+       src/crypto/evp/pbkdf_test.cc
+       src/crypto/evp/scrypt_test.cc
+       src/crypto/fipsmodule/aes/aes_test.cc
+       src/crypto/fipsmodule/aes/internal.h
+       src/crypto/fipsmodule/bcm.c
+       src/crypto/fipsmodule/bn/check_bn_tests.go
+       src/crypto/fipsmodule/cipher/aead.c
+       src/crypto/fipsmodule/delocate.h
+       src/crypto/fipsmodule/ec/ec_test.cc
+       src/crypto/fipsmodule/ec/p224-64.c
+       src/crypto/fipsmodule/modes/polyval.c
+       src/crypto/fipsmodule/rand/*
+       src/crypto/fipsmodule/self_check/fips.c
+       src/crypto/hkdf/*
+       src/crypto/lhash/lhash_test.cc
+       src/crypto/obj/obj_test.cc
+       src/crypto/obj/objects.go
+       src/crypto/pkcs7/*
+       src/crypto/pkcs8/pkcs12_test.cc
+       src/crypto/pkcs8/pkcs8_test.cc
+       src/crypto/poly1305/*
+       src/crypto/pool/*
+       src/crypto/rand_extra/*
+       src/crypto/refcount_*.c
+       src/crypto/test/*
+       src/crypto/thread_*.c
+       src/crypto/x509/internal.h
+       src/crypto/x509/x509_test.cc
+       src/decrepit/evp/*
+       src/decrepit/obj/*
+       src/decrepit/x509/*
+       src/FUZZING.md
+       src/include/openssl/aead.h
+       src/include/openssl/asn1_mac.h
+       src/include/openssl/buffer.h
+       src/include/openssl/bytestring.h
+       src/include/openssl/chacha.h
+       src/include/openssl/cmac.h
+       src/include/openssl/crypto.h
+       src/include/openssl/curve25519.h
+       src/include/openssl/dtls1.h
+       src/include/openssl/engine.h
+       src/include/openssl/hkdf.h
+       src/include/openssl/is_boringssl.h
+       src/include/openssl/obj_mac.h
+       src/include/openssl/objects.h
+       src/include/openssl/opensslconf.h
+       src/include/openssl/opensslv.h
+       src/include/openssl/ossl_typ.h
+       src/include/openssl/pkcs12.h
+       src/include/openssl/pkcs7.h
+       src/include/openssl/poly1305.h
+       src/include/openssl/pool.h
+       src/include/openssl/rand.h
+       src/include/openssl/safestack.h
+       src/include/openssl/srtp.h
+       src/INCORPORATING.md
+       src/PORTING.md
+       src/README.md
+       src/ssl/CMakeLists.txt
+       src/ssl/ssl_aead_ctx.cc
+       src/ssl/ssl_buffer.cc
+       src/ssl/ssl_test.cc
+       src/ssl/ssl_versions.cc
+       src/ssl/test/*
+       src/ssl/tls13_both.cc
+       src/ssl/tls13_client.cc
+       src/ssl/tls13_enc.cc
+       src/ssl/tls13_server.cc
+       src/STYLE.md
+       src/tool/*
+       src/util/*
+Copyright: 2014-2017, Google Inc.
+License: ISC
+
+Files: src/crypto/cipher_extra/asm/aes128gcmsiv-x86_64.pl
+Copyright: 2017, Shay Gueron
+           2017, Google Inc
+License: ISC
+
+Files: src/third_party/wycheproof_testvectors/*
+Copyright: 2016-2019, Google Inc.
+License: Apache-2.0
+
+Files: src/third_party/fiat/*
+Copyright: 2015-2016 the fiat-crypto authors
+License: Expat
+
+Files: src/ssl/test/runner/*.go
+Copyright: 2012-2016, The Go Authors
+License: BSD-3-clause
+
+Files: src/util/bot/go/*
+       src/util/bot/vs_toolchain.py
+Copyright: 2014, The Chromium Authors
+License: BSD-3-clause
+
+Files: src/crypto/fipsmodule/bn/asm/rsaz-avx2.pl
+       src/crypto/fipsmodule/bn/rsaz_exp.c
+       src/crypto/fipsmodule/bn/rsaz_exp.h
+       src/crypto/fipsmodule/ec/asm/p256-x86_64-asm.pl
+Copyright: 2013-2016 The OpenSSL Project Authors
+           2012, Intel Corporation
+License: OpenSSL
+
+Files: src/crypto/asn1/charmap.pl
+       src/crypto/asn1/internal.h
+       src/crypto/asn1/time_support.c
+       src/crypto/bio/pair.c
+       src/crypto/cipher_extra/cipher_test.cc
+       src/crypto/cipher_extra/tls_cbc.c
+       src/crypto/dh_extra/dh_asn1.c
+       src/crypto/dh_extra/params.c
+       src/crypto/dsa/dsa_asn1.c
+       src/crypto/ec_extra/ec_asn1.c
+       src/crypto/ecdh_extra/ecdh_extra.c
+       src/crypto/ecdsa_extra/*
+       src/crypto/evp/evp_test.cc
+       src/crypto/evp/p_dsa_asn1.c
+       src/crypto/evp/p_ec.c
+       src/crypto/evp/p_ec_asn1.c
+       src/crypto/evp/p_rsa.c
+       src/crypto/evp/p_rsa_asn1.c
+       src/crypto/evp/pbkdf.c
+       src/crypto/evp/print.c
+       src/crypto/fipsmodule/aes/aes.c
+       src/crypto/fipsmodule/aes/key_wrap.c
+       src/crypto/fipsmodule/aes/mode_wrappers.c
+       src/crypto/fipsmodule/bn/asm/x86_64-gcc.c
+       src/crypto/fipsmodule/bn/ctx.c
+       src/crypto/fipsmodule/bn/jacobi.c
+       src/crypto/fipsmodule/bn/sqrt.c
+       src/crypto/fipsmodule/cipher/e_aes.c
+       src/crypto/fipsmodule/digest/md32_common.h
+       src/crypto/fipsmodule/ec/ec.c
+       src/crypto/fipsmodule/ec/ec_key.c
+       src/crypto/fipsmodule/ec/ec_montgomery.c
+       src/crypto/fipsmodule/ec/internal.h
+       src/crypto/fipsmodule/ec/oct.c
+       src/crypto/fipsmodule/ec/simple.c
+       src/crypto/fipsmodule/ec/wnaf.c
+       src/crypto/fipsmodule/ecdh/*
+       src/crypto/fipsmodule/ecdsa/ecdsa.c
+       src/crypto/fipsmodule/ecdsa/ecdsa_test.cc
+       src/crypto/fipsmodule/modes/cbc.c
+       src/crypto/fipsmodule/modes/cfb.c
+       src/crypto/fipsmodule/modes/ctr.c
+       src/crypto/fipsmodule/modes/gcm.c
+       src/crypto/fipsmodule/modes/gcm_test.cc
+       src/crypto/fipsmodule/modes/internal.h
+       src/crypto/fipsmodule/modes/ofb.c
+       src/crypto/fipsmodule/rsa/padding.c
+       src/crypto/fipsmodule/sha/asm/*
+       src/crypto/fipsmodule/tls/kdf.c
+       src/crypto/pem/pem_x509.c
+       src/crypto/pem/pem_xaux.c
+       src/crypto/pkcs8/internal.h
+       src/crypto/pkcs8/p5_pbev2.c
+       src/crypto/pkcs8/pkcs8.c
+       src/crypto/pkcs8/pkcs8_x509.c
+       src/crypto/rsa_extra/rsa_asn1.c
+       src/crypto/x509/rsa_pss.c
+       src/crypto/x509/x509_trs.c
+       src/crypto/x509/x509_vpm.c
+       src/crypto/x509/x509cset.c
+       src/crypto/x509/x509spki.c
+       src/crypto/x509/x_algor.c
+       src/crypto/x509/x_x509a.c
+       src/crypto/x509v3/*
+       src/decrepit/dh/*
+       src/decrepit/dsa/*
+       src/decrepit/xts/xts.c
+       src/include/openssl/aes.h
+       src/include/openssl/arm_arch.h
+       src/include/openssl/asn1t.h
+       src/include/openssl/base.h
+       src/include/openssl/ec.h
+       src/include/openssl/ec_key.h
+       src/include/openssl/ecdh.h
+       src/include/openssl/ecdsa.h
+       src/include/openssl/pkcs8.h
+       src/include/openssl/x509v3.h
+       src/ssl/d1_lib.cc
+       src/ssl/dtls_method.cc
+Copyright: 2002, Sun Microsystems
+           1998-2016, The OpenSSL Project
+License: OpenSSL
+
+Files: src/crypto/cipher_extra/asm/chacha20_poly1305_x86_64.pl
+Copyright: 2015, CloudFlare Ltd
+License: ISC
+
+Files: src/crypto/fipsmodule/bn/montgomery_inv.c
+Copyright: 2016, Brian Smith
+License: ISC
+
+Files: src/crypto/x509v3/v3_pci.c
+       src/crypto/x509v3/v3_pcia.c
+Copyright: 2004, Kungliga Tekniska Högskolan
+License: BSD-3-clause
+
+Files: debian/*
+Copyright: 2016, Kai-Chung Yan <seamlikok@gmail.com>
+           2022, Roger Shimizu <rosh@debian.org>
+License: Expat
+
+Files: android-sources.cmake
+       debian/sources.mk
+       eureka.mk
+       selftest/Android.bp
+       selftest/boringssl_self_test.cpp
+       sources.bp
+       sources.mk
+Copyright: 2017-2019, The Android Open Source Project
+License: Apache-2.0
+
+Files: src/crypto/fipsmodule/md5/asm/md5-x86_64.pl
+Copyright: n/a
+License: public-domain
+ Author: Marc Bevand <bevand_m (at) epita.fr>
+ License: I hereby disclaim the copyright on this code and place it
+ in the public domain.
+
+License: OpenSSL
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in
+    the documentation and/or other materials provided with the
+    distribution.
+ 3. All advertising materials mentioning features or use of this
+    software must display the following acknowledgment:
+    "This product includes software developed by the OpenSSL Project
+    for use in the OpenSSL Toolkit. (http://www.openssl.org/)"
+ 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
+    endorse or promote products derived from this software without
+    prior written permission. For written permission, please contact
+    openssl-core@openssl.org.
+ 5. Products derived from this software may not be called "OpenSSL"
+    nor may "OpenSSL" appear in their names without prior written
+    permission of the OpenSSL Project.
+ 6. Redistributions of any form whatsoever must retain the following
+    acknowledgment:
+    "This product includes software developed by the OpenSSL Project
+    for use in the OpenSSL Toolkit (http://www.openssl.org/)"
+ .
+ THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
+ EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
+ ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ OF THE POSSIBILITY OF SUCH DAMAGE.
+
+License: ISC
+ Permission to use, copy, modify, and/or distribute this software for any
+ purpose with or without fee is hereby granted, provided that the above
+ copyright notice and this permission notice appear in all copies.
+ .
+ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+ OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+ CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+License: Expat
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+ .
+ The above copyright notice and this permission notice shall be included in all
+ copies or substantial portions of the Software.
+ .
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ SOFTWARE.
+
+License: SSLeay
+ This library is free for commercial and non-commercial use as long as
+ the following conditions are adhered to.  The following conditions
+ apply to all code found in this distribution, be it the RC4, RSA,
+ lhash, DES, etc., code; not just the SSL code.  The SSL documentation
+ included with this distribution is covered by the same copyright terms
+ except that the holder is Tim Hudson (tjh@cryptsoft.com).
+ .
+ Copyright remains Eric Young's, and as such any Copyright notices in
+ the code are not to be removed.
+ If this package is used in a product, Eric Young should be given attribution
+ as the author of the parts of the library used.
+ This can be in the form of a textual message at program startup or
+ in documentation (online or textual) provided with the package.
+ .
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ 3. All advertising materials mentioning features or use of this software
+    must display the following acknowledgement:
+    "This product includes cryptographic software written by
+     Eric Young (eay@cryptsoft.com)"
+    The word 'cryptographic' can be left out if the routines from the library
+    being used are not cryptographic related :-).
+ 4. If you include any Windows specific code (or a derivative thereof) from
+    the apps directory (application code) you must include an acknowledgement:
+    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
+ .
+ THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
+ ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ SUCH DAMAGE.
+ .
+ The license and distribution terms for any publically available version or
+ derivative of this code cannot be changed.  i.e. this code cannot simply be
+ copied and put under another distribution license
+ [including the GNU General Public License.]
+
+License: Apache-2.0
+ On Debian systems, the full text of the Apache License, Version 2.0
+ can be found in the file `/usr/share/common-licenses/Apache-2.0'.
+
+License: BSD-3-clause
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are
+ met:
+ .
+    * Redistributions of source code must retain the above copyright
+ notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above
+ copyright notice, this list of conditions and the following disclaimer
+ in the documentation and/or other materials provided with the
+ distribution.
+    * Neither the name of Google Inc. nor the names of its
+ contributors may be used to endorse or promote products derived from
+ this software without specific prior written permission.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

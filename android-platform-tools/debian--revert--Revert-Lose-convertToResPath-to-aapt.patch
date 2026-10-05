@@ -1,0 +1,131 @@
+Description: Revert "Lose convertToResPath to aapt."
+ This reverts commit 1d98fe0d393f05283f3a10a896f1054ecd3043cd.
+Forwarded: not-needed
+--- a/system/core/libutils/String8.cpp
++++ b/system/core/libutils/String8.cpp
+@@ -39,6 +39,10 @@
+ 
+ namespace android {
+ 
++// Separator used by resource paths. This is not platform dependent contrary
++// to OS_PATH_SEPARATOR.
++#define RES_PATH_SEPARATOR '/'
++
+ static inline char* getEmptyString() {
+     static SharedBuffer* gEmptyStringBuf = [] {
+         SharedBuffer* buf = SharedBuffer::alloc(1);
+@@ -578,4 +582,20 @@ String8& String8::appendPath(const char* name)
+     }
+ }
+ 
++String8& String8::convertToResPath()
++{
++#if OS_PATH_SEPARATOR != RES_PATH_SEPARATOR
++    size_t len = length();
++    if (len > 0) {
++        char * buf = lockBuffer(len);
++        for (char * end = buf + len; buf < end; ++buf) {
++            if (*buf == OS_PATH_SEPARATOR)
++                *buf = RES_PATH_SEPARATOR;
++        }
++        unlockBuffer(len);
++    }
++#endif
++    return *this;
++}
++
+ }; // namespace android
+--- a/system/core/libutils/String8_fuzz.cpp
++++ b/system/core/libutils/String8_fuzz.cpp
+@@ -82,6 +82,9 @@ std::vector<std::function<void(FuzzedDataProvider*, android::String8*, android::
+                 [](FuzzedDataProvider*, android::String8* str1, android::String8*) -> void {
+                     str1->getPathDir();
+                 },
++                [](FuzzedDataProvider*, android::String8* str1, android::String8*) -> void {
++                    str1->convertToResPath();
++                },
+                 [](FuzzedDataProvider*, android::String8* str1, android::String8*) -> void {
+                     std::shared_ptr<android::String8> path_out_str =
+                             std::make_shared<android::String8>();
+--- a/system/core/libutils/abi-dumps/arm64/source-based/libutils.so.lsdump
++++ b/system/core/libutils/abi-dumps/arm64/source-based/libutils.so.lsdump
+@@ -724,6 +724,9 @@
+   {
+    "name" : "_ZN7android7String813appendFormatVEPKcSt9__va_list"
+   },
++  {
++   "name" : "_ZN7android7String816convertToResPathEv"
++  },
+   {
+    "name" : "_ZN7android7String85clearEv"
+   },
+@@ -6924,6 +6927,19 @@
+    "return_type" : "_ZTIi",
+    "source_file" : "system/core/libutils/include/utils/String8.h"
+   },
++  {
++   "function_name" : "android::String8::convertToResPath",
++   "linker_set_key" : "_ZN7android7String816convertToResPathEv",
++   "parameters" :
++   [
++    {
++     "is_this_ptr" : true,
++     "referenced_type" : "_ZTIPN7android7String8E"
++    }
++   ],
++   "return_type" : "_ZTIRN7android7String8E",
++   "source_file" : "system/core/libutils/include/utils/String8.h"
++  },
+   {
+    "function_name" : "android::String8::clear",
+    "linker_set_key" : "_ZN7android7String85clearEv",
+--- a/system/core/libutils/abi-dumps/arm_arm64/source-based/libutils.so.lsdump
++++ b/system/core/libutils/abi-dumps/arm_arm64/source-based/libutils.so.lsdump
+@@ -724,6 +724,9 @@
+   {
+    "name" : "_ZN7android7String813appendFormatVEPKcSt9__va_list"
+   },
++  {
++   "name" : "_ZN7android7String816convertToResPathEv"
++  },
+   {
+    "name" : "_ZN7android7String85clearEv"
+   },
+@@ -6920,6 +6923,19 @@
+    "return_type" : "_ZTIi",
+    "source_file" : "system/core/libutils/include/utils/String8.h"
+   },
++  {
++   "function_name" : "android::String8::convertToResPath",
++   "linker_set_key" : "_ZN7android7String816convertToResPathEv",
++   "parameters" :
++   [
++    {
++     "is_this_ptr" : true,
++     "referenced_type" : "_ZTIPN7android7String8E"
++    }
++   ],
++   "return_type" : "_ZTIRN7android7String8E",
++   "source_file" : "system/core/libutils/include/utils/String8.h"
++  },
+   {
+    "function_name" : "android::String8::clear",
+    "linker_set_key" : "_ZN7android7String85clearEv",
+--- a/system/core/libutils/include/utils/String8.h
++++ b/system/core/libutils/include/utils/String8.h
+@@ -211,6 +211,15 @@ public:
+                                              { String8 p(*this); p.appendPath(leaf); return p; }
+     String8 appendPathCopy(const String8& leaf) const { return appendPathCopy(leaf.c_str()); }
+ 
++    /*
++     * Converts all separators in this string to /, the default path separator.
++     *
++     * If the default OS separator is backslash, this converts all
++     * backslashes to slashes, in-place. Otherwise it does nothing.
++     * Returns self.
++     */
++    String8& convertToResPath();
++
+ private:
+             status_t            real_append(const char* other, size_t numChars);
+             char*               find_extension(void) const;

@@ -1,0 +1,43 @@
+# Maintainer: Ludovico de Nittis <ludovico.denittis@collabora.com>
+
+pkgname=atomupd-daemon
+pkgver=0.20260810.0
+pkgrel=4
+pkgdesc='Atomic updates daemon'
+arch=('x86_64' 'aarch64')
+url='https://github.com/evlav/atomupd-daemon'
+license=('MIT')
+makedepends=('git' 'meson' 'python-dbusmock'
+  'python-packaging'
+  'python>=3.11'
+  'python<3.15'
+)
+depends=('dbus' 'glib2-devel' 'json-glib' 'steamos-atomupd-client' 'polkit' 'systemd')
+provides=("${pkgname}")
+conflicts=("${pkgname}")
+source=("${pkgname}::git+https://github.com/evlav/atomupd-daemon#tag=v${pkgver}")
+sha256sums=('21b945dc9cf3b00c06f94395e5e5520b4504826590a5d60f64d4ab2f6d2a6205')
+
+build() {
+  MESON_ARGS=()
+  if [[ "${CARCH}" == "aarch64" ]]; then
+    MESON_ARGS+=( -D authorized_user=steamos )
+  fi
+
+  arch-meson "${pkgname}" build "${MESON_ARGS[@]}"
+  meson compile -C build
+}
+
+check() {
+  export DBUS_SESSION_BUS_ADDRESS=`dbus-daemon --fork --config-file=/usr/share/dbus-1/session.conf --print-address`
+  # A new system bus is needed for the mock polkit
+  export DBUS_SYSTEM_BUS_ADDRESS=`dbus-daemon --fork --config-file="${pkgname}"/ci/dbus_system.conf --print-address`
+
+  meson test -C build --print-errorlogs
+}
+
+package() {
+  meson install -C build --destdir "$pkgdir"
+  install -d -o root -g 102 -m 750 "${pkgdir}"/usr/share/polkit-1/rules.d
+}
+

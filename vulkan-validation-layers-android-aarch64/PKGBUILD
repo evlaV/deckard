@@ -1,0 +1,69 @@
+source ../vulkan-headers/vulkan_common.pkgbuild
+pkgname=vulkan-validation-layers-android-aarch64
+pkgver=${_pkgver:-1}
+pkgrel=${_pkgrel:-1}
+pkgdesc="Vulkan Validation Layers for aarch64 android"
+url="https://www.vulkan.org/"
+arch=('aarch64')
+license=(Apache-2.0)
+depends=()
+makedepends=(
+  'git' 'python'
+)
+options=(
+  # https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/5994
+  !lto
+)
+groups=(vulkan-devel)
+source=("${_vulkan_validation_layers_url}")
+sha256sums=('12b26382a80bf0d86d0dfaf7ab85cd56128eab42270400990fb7d31f3cee7bea')
+
+# Don't create separate debug packages for this package because Android tools don't know how to
+# find things in `/usr/lib/debug`.  Instead just ship debug packages because these layers are tiny.
+options=('!strip' '!debug')
+
+build() {
+  export NDK_VERSION=25.2.9519653
+  export ANDROID_NDK_HOME=/opt/android/ndk/$NDK_VERSION
+  export ANDROID_SDK_ROOT=/opt/android
+  export PATH=$ANDROID_SDK_ROOT/build-tools/$NDK_VERSION:$PATH
+  export PATH=$ANDROID_SDK_ROOT/cmake/3.22.1/bin:$PATH
+
+  # Prevent cmake from using host flags.
+  export CFLAGS=
+  export CXXFLAGS=
+  export CPPFLAGS=
+
+  local cmake_options=(
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+    -DANDROID_PLATFORM=30 \
+    -DANDROID_ABI=arm64-v8a \
+    -DCMAKE_ANDROID_ARCH_ABI=arm64-v8a \
+    -DCMAKE_ANDROID_STL_TYPE=c++_static \
+    -DANDROID_USE_LEGACY_TOOLCHAIN_FILE=NO \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DUPDATE_DEPS=ON \
+  )
+
+  cmake -S Vulkan-ValidationLayers -B build -G Ninja "${cmake_options[@]}"
+  cmake --build build
+}
+
+check() {
+  ctest --test-dir build --output-on-failure --stop-on-failure
+}
+
+# We manually place our files in a very specific set of locations
+package() {
+    local VENDOR="${pkgdir}/usr/share/guestos/android/vendor"
+    cd "${srcdir}/build/layers"
+    for LIB in *.so; do
+        # We can't place this in `/vendor/lib` unfortunately because we don't have a real Vulkan loader on Android.
+        # So we place it in a well-known location (`/vendor/vulkan_layers`) to be picked up by Fauxdroid's poor-
+        # man's Vulkan loader written in bash.
+        install -TDm755 "${LIB}" "${VENDOR}/vulkan_layers/${LIB}"
+    done
+}
+
+# vim:set sw=2 sts=-1 et:

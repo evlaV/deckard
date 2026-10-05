@@ -1,0 +1,27 @@
+From cecdbc034f088283f644a99e7a758f8b72c9157c Mon Sep 17 00:00:00 2001
+From: Arun Raghavan <arunr@valvesoftware.com>
+Date: Wed, 3 Jun 2026 09:39:32 -0700
+Subject: [PATCH] spa: aec: Fix a spurious warning while parsing args
+
+---
+ spa/plugins/aec/aec-webrtc.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/spa/plugins/aec/aec-webrtc.cpp b/spa/plugins/aec/aec-webrtc.cpp
+index b3a7a332dd36..f81e0be546c0 100644
+--- a/spa/plugins/aec/aec-webrtc.cpp
++++ b/spa/plugins/aec/aec-webrtc.cpp
+@@ -213,8 +213,8 @@ static int webrtc_init2(void *object, const struct spa_dict *args,
+ 		agc1_mode = webrtc::AudioProcessing::Config::GainController1::Mode::kFixedDigital;
+ 	else if (spa_streq(str, "adaptive-analog"))
+ 		spa_log_warn(impl->log, "Adaptive analog mode is not implemented");
+-	else
+-		spa_log_warn(impl->log, "Unknown AGC2 mode '%s'", str);
++	else if (str != NULL)
++		spa_log_warn(impl->log, "Unknown AGC1 mode '%s'", str);
+ 
+ 	config.gain_controller1.enabled = gain_control1;
+ 	config.gain_controller1.mode = agc1_mode;
+-- 
+2.54.0
+

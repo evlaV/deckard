@@ -1,0 +1,6 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=Plasma (Wayland)
+Exec=start-gamescope-session plasma-session.target
+DesktopNames=KDE
+

@@ -1,0 +1,16 @@
+[Unit]
+Description=USB network gadget %i dnsmasq instance
+
+# We need the gadget, and if the gadget is stopped, stop us too
+After=usb-ncm-gadget@%i.service
+Requires=usb-ncm-gadget@%i.service
+PartOf=usb-ncm-gadget@%i.service
+
+[Service]
+EnvironmentFile=/run/usb-gadget-tools/env
+ExecStartPre=/usr/share/deckard/usb-ncm-dnsmasq.sh start %i
+ExecStart=/usr/bin/dnsmasq -k --user=dnsmasq -C /var/run/dnsmasq_%i.conf -l /var/run/dnsmasq_%i.leases --log-debug
+ExecStopPost=/usr/share/deckard/usb-ncm-dnsmasq.sh stop %i
+Restart=on-failure
+PrivateDevices=true
+ProtectSystem=full

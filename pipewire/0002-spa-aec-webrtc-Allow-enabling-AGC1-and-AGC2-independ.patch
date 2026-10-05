@@ -1,0 +1,40 @@
+From 5a44a255dc3e13f1892bfaafcb230ca5b85c8d89 Mon Sep 17 00:00:00 2001
+From: Arun Raghavan <arunr@valvesoftware.com>
+Date: Tue, 19 May 2026 16:32:31 -0700
+Subject: [PATCH 2/3] spa: aec: webrtc: Allow enabling AGC1 and AGC2
+ independently
+
+---
+ spa/plugins/aec/aec-webrtc.cpp | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/spa/plugins/aec/aec-webrtc.cpp b/spa/plugins/aec/aec-webrtc.cpp
+index 422a7369101c..81f814f95574 100644
+--- a/spa/plugins/aec/aec-webrtc.cpp
++++ b/spa/plugins/aec/aec-webrtc.cpp
+@@ -190,16 +190,19 @@ static int webrtc_init2(void *object, const struct spa_dict *args,
+ 	config.transient_suppression.enabled = transient_suppression;
+ 	config.voice_detection.enabled = voice_detection;
+ #elif defined(HAVE_WEBRTC2)
++	bool gain_control1 = webrtc_get_spa_bool(args, "webrtc.gain_control1.enabled", false);
++	bool gain_control2 = webrtc_get_spa_bool(args, "webrtc.gain_control2.enabled", false);
++
+ 	webrtc::AudioProcessing::Config config;
+ 	config.echo_canceller.enabled = true;
+ 	config.echo_canceller.mobile_mode = mobile_mode;
+ 	config.pipeline.multi_channel_capture = rec_info->channels > 1;
+ 	config.pipeline.multi_channel_render = play_info->channels > 1;
+ 	// FIXME: Example code enables both gain controllers, but that seems sus
+-	config.gain_controller1.enabled = gain_control;
++	config.gain_controller1.enabled = gain_control || gain_control1;
+ 	config.gain_controller1.mode = webrtc::AudioProcessing::Config::GainController1::Mode::kAdaptiveDigital;
+-	config.gain_controller2.enabled = gain_control;
+-	config.gain_controller2.adaptive_digital.enabled = gain_control;
++	config.gain_controller2.enabled = gain_control || gain_control2;
++	config.gain_controller2.adaptive_digital.enabled = gain_control || gain_control2;
+ 	config.high_pass_filter.enabled = high_pass_filter;
+ 	config.noise_suppression.enabled = noise_suppression;
+ 	config.noise_suppression.level = webrtc::AudioProcessing::Config::NoiseSuppression::kHigh;
+-- 
+2.54.0
+

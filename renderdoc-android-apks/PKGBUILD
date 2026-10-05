@@ -1,0 +1,67 @@
+# This so that our renderdoc builds always happen in lockstep
+source ../renderdoc/renderdoc_common.pkgbuild
+
+pkgname=renderdoc-android-apks
+pkgdesc="Android APKs for renderdoc"
+pkgver=${_pkgver:-1}
+pkgrel=${_pkgrel:-1}
+arch=('aarch64')
+url="https://github.com/baldurk/renderdoc"
+license=("MIT")
+source=("git+https://github.com/evlav/renderdoc.git#commit=${_commit}")
+makedepends=('cmake' 'clang' 'ninja' 'jdk17-openjdk')
+depends=(
+  # We'd like to do this, but it doesn't exist in x86_64 holo
+  #'android-platform-tools'
+)
+source=("git+https://github.com/evlav/renderdoc.git#commit=${_commit}")
+sha512sums=('SKIP')
+
+build() {
+  # Set up paths that are baked into the android cross-builder container image
+  export ANDROID_NDK=/opt/android/ndk/25.2.9519653
+  export ANDROID_HOME=/opt/android
+  export JAVA_HOME="$(compgen -G "/usr/lib/jvm/java-17-openjdk")"
+
+  # Build 32-bit `.apk` (not actually used on Deckard, renderdoc will no longer miss it)
+  #cmake -G Ninja \
+  #      -DCMAKE_BUILD_TYPE=Release \
+  #      -DBUILD_ANDROID=ON \
+  #      -DANDROID_ABI=armeabi-v7a \
+  #      -DBUILD_VERSION_STABLE=ON \
+  #      -DBUILD_VERSION_DIST_CONTACT="sabae@valvesoftware.com" \
+  #      -DBUILD_VERSION_DIST_NAME="SteamOS" \
+  #      -DBUILD_VERSION_DIST_VER="${pkgver}" \
+  #      -B"${srcdir}/renderdoc/build-android-arm32" \
+  #      -H"${srcdir}/renderdoc"
+  #cmake --build "${srcdir}/renderdoc/build-android-arm32"
+
+  # Build 64-bit `.apk`
+  cmake -G Ninja \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_ANDROID=ON \
+        -DANDROID_ABI=arm64-v8a \
+        -DBUILD_VERSION_STABLE=ON \
+        -DBUILD_VERSION_DIST_CONTACT="sabae@valvesoftware.com" \
+        -DBUILD_VERSION_DIST_NAME="SteamOS" \
+        -DBUILD_VERSION_DIST_VER="${pkgver}" \
+        -B"${srcdir}/renderdoc/build-android-arm64" \
+        -H"${srcdir}/renderdoc"
+  cmake --build "${srcdir}/renderdoc/build-android-arm64"
+}
+
+package() {
+  mkdir -p "${pkgdir}/usr/share/renderdoc/plugins/android"
+  # Skipping 32-bit install now that its not being built
+  #install -Dm644 ${srcdir}/renderdoc/build-android-arm32/bin/*.apk "$pkgdir/usr/share/renderdoc/plugins/android/"
+  install -Dm644 ${srcdir}/renderdoc/build-android-arm64/bin/*.apk "$pkgdir/usr/share/renderdoc/plugins/android/"
+
+  # Install `adb` symlink in the place that renderdoc looks for `adb`.
+  # NOTE: It's a little strange that it's looking in `/usr/lib/plugins` instead of `/usr/share/renderdoc/plugins`?
+  mkdir -p "${pkgdir}/usr/lib/plugins/android"
+  ln -s /usr/lib/android-sdk/platform-tools/adb "${pkgdir}/usr/lib/plugins/android/adb"
+
+  # Install renderdoc vulkan layer in the place where Fauxdroid will find it
+  mkdir -p "${pkgdir}/usr/share/guestos/android/vendor/vulkan_layers"
+  install -Dm755 ${srcdir}/renderdoc/build-android-arm64/lib/libVkLayer_*.so "${pkgdir}/usr/share/guestos/android/vendor/vulkan_layers/"
+}

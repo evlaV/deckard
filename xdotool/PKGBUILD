@@ -1,0 +1,52 @@
+# Maintainer: Carl Smedstad <carsme@archlinux.org>
+# Contributor: Evangelos Foutras <foutrelis@archlinux.org>
+# Contributor: Rttommy <rttommy@gmail.com>
+
+pkgname=xdotool
+pkgver=4.20260303.1
+pkgrel=4
+pkgdesc="Command-line X11 automation tool"
+arch=('x86_64' 'aarch64')
+url="https://www.semicomplete.com/projects/xdotool/"
+license=('BSD-3-Clause')
+depends=(
+  'glibc'
+  'libx11'
+  'libxinerama'
+  'libxkbcommon'
+  'libxtst'
+)
+checkdepends=(
+  'procps-ng'
+  'ruby-minitest'
+  'xorg-fonts-misc'
+  'xorg-mkfontscale'
+  'xorg-server-xvfb'
+  'xorg-setxkbmap'
+  'xorg-xdpyinfo'
+  'xorg-xprop'
+  'xorg-xwininfo'
+  'xterm'
+)
+provides=('libxdo.so')
+source=("https://github.com/jordansissel/xdotool/archive/v$pkgver/$pkgname-$pkgver.tar.gz")
+b2sums=('2ce3e01a196bde842a82279aeae02c347b25f3bff88a27000be7e7fc283294ccc19b4c76856471c4afda432224d4af663f6b43dabc179b99b5738c75886e9a26')
+
+build() {
+  cd $pkgname-$pkgver
+  make WITHOUT_RPATH_FIX=1
+}
+
+check() {
+  cd $pkgname-$pkgver
+  # Reduce noise by ensure tests have access to correct fonts
+  cp -vr /usr/share/fonts/misc ./fonts
+  mkfontdir ./fonts
+  make -C t test-xvfb-nowm XSERVER="Xvfb -ac -screen 0 1280x768x24 -fp $PWD/fonts"
+}
+
+package() {
+  cd $pkgname-$pkgver
+  make DESTDIR="$pkgdir" PREFIX=/usr INSTALLMAN=/usr/share/man install
+  install -vDm644 -t "$pkgdir/usr/share/licenses/$pkgname" COPYRIGHT
+}

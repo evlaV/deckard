@@ -1,0 +1,38 @@
+# Maintainer David Edmundson (bluesystems@davidedmundson.co.uk)
+
+pkgname=steamdeck-kde-presets
+_srctag=3.8.3
+_commit=125c3b4e317097170611a1de954c4db541ea52c5
+pkgver=${_srctag#jupiter-}
+pkgrel=13
+arch=('any')
+url=""
+pkgdesc="Steamdeck KDE Presets"
+license=('GPL2')
+depends=('kdialog')
+makedepends=('git' 'openssh')
+source=(
+    "git+https://github.com/evlav/deckard-steamdeck-kde-presets.git#commit=$_commit"
+    "powerdevilrc"
+    "deckard-nested-desktop.desktop"
+)
+sha512sums=('SKIP'
+            'dd0471eb6a0e566c870d25ca76ba858e608ffdb624ddb722cde4adda8a77e3a22e6e5820d657e24752deff035ad9f5b582a239622488fbe148a551549861f7c8'
+            'fa4bbedeaccb2d6b243a7d7d78d39df28d64968cbb9057a3178fac5fa51f3987216603cf9228f02485dfc96aeb7f60abfff2d9e0e0c81637ad0fe9879d7ca40f')
+
+package() {
+    cp -R "$srcdir"/steamdeck-kde-presets/* "$pkgdir"
+    install -d -m0755 "$pkgdir/usr/lib/systemd/system/multi-user.target.wants/"
+    ln -s ../steamos-set-plasma-theme.service "$pkgdir/usr/lib/systemd/system/multi-user.target.wants/"
+
+    if [[ "${CARCH}" == "aarch64" ]]; then
+        install -Dm655 powerdevilrc "${pkgdir}/etc/xdg/powerdevilrc"
+
+        # misyl: Add a version to the normal applications list
+        # So it shows up in the non-Steam app launcher on Steam Frame.
+        install -Dm655 deckard-nested-desktop.desktop "${pkgdir}/usr/share/applications/deckard-nested-desktop.desktop"
+
+        # Remove the other shortcut that exists.
+        rm "${pkgdir}/usr/share/applications/steam/steamos-nested-desktop/steamos-nested-desktop.desktop"
+    fi
+}

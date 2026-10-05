@@ -1,0 +1,18 @@
+[binaries]
+c = 'clang'
+cpp = 'clang++'
+strip = 'strip'
+pkgconfig = 'pkg-config'
+llvm-config = 'llvm-config'
+
+[built-in options]
+c_args = ['-mfpmath=sse', '-march=x86-64-v3', '-mstackrealign']
+cpp_args = ['-mfpmath=sse', '-march=x86-64-v3', '-mstackrealign']
+c_link_args = ['-mfpmath=sse', '-march=x86-64-v3', '-mstackrealign']
+cpp_link_args = ['-mfpmath=sse', '-march=x86-64-v3', '-mstackrealign']
+
+[host_machine]
+system = 'linux'
+cpu_family = 'x86_64'
+cpu = 'x86_64'
+endian = 'little'

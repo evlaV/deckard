@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# We don't do bios updates in this script, we do it in our kernelsetup.sh
+exit 0

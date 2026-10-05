@@ -1,0 +1,14 @@
+diff --git a/hooks/udev b/hooks/udev
+index c6760fc..39171de 100644
+--- a/hooks/udev
++++ b/hooks/udev
+@@ -8,7 +8,8 @@ run_earlyhook() {
+     if [ "${quiet}" = "y" ]; then
+         /usr/lib/systemd/systemd-udevd --daemon --resolve-names=never >/dev/null 2>&1
+     else
++        # To make this output useful stuff, add udev.log-priority=debug to your kernel command line
+-        /usr/lib/systemd/systemd-udevd --daemon --resolve-names=never
++        /usr/lib/systemd/systemd-udevd --daemon --resolve-names=never 2>&1 | ts >/run/initramfs/udevd.log &
+     fi
+     # used externally by poll_device()
+     # shellcheck disable=SC2034

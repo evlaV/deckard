@@ -1,0 +1,153 @@
+#!/bin/bash
+
+## This service is development-only, and will not persist to production units.  It enrolls the unit in a private
+## 'foxnet' wireguard VPN, exposes SSH access to it, allows remote administration, as well as submission of telemetry if
+## the `foxnetstatsd` service is available.
+##
+## This service will only function if this unit has been given a foxnet certificate manually.  To disable it entirely,
+## disable the `foxnet` service if enabled, and remove the 'foxnet' NetworkManager connection, if present.
+##
+##   systemctl disable --now foxnet
+##   nmcli connection delete foxnet  # If it has run once already
+##
+## The certificate is stored at /esp/foxnet.conf -- deleting this will ensure the script has no way to gain access or
+## run.
+##
+## Earlier builds of the OS had a mechanism to attempt to auto-obtain a certificate, but this is no longer possible and
+## was removed below.
+
+set -eux
+
+die() { echo >&2 "!! $*"; exit 1; }
+
+# Check explicit inhibit file and bail
+BOOTSTRAP_INHIBITS=(
+  /home/.steamos/inhibit-foxnet
+  /data/inhibit-bootstrap-foxnet
+)
+for BOOTSTRAP_INHIBIT in "${BOOTSTRAP_INHIBITS[@]}"; do
+  if [[ -e $BOOTSTRAP_INHIBIT ]]; then
+    echo "'${BOOTSTRAP_INHIBIT}' inhibits foxnet bootstrapping, done"
+    exit 0
+  fi
+done
+
+function find_foxnet_conf()
+{
+  local LOCAL_CONF_LOCATIONS=(
+    # SteamDeck location
+    /esp/foxnet.conf
+
+    # Deckard location
+    /persist/foxnet.conf
+    /persist/foxnet_device.conf
+  )
+
+  for LOCAL_CONF in "${LOCAL_CONF_LOCATIONS[@]}"; do
+    if [[ -f "${LOCAL_CONF}" ]]; then
+      echo -n "${LOCAL_CONF}"
+      break
+    fi
+  done
+}
+
+LOCAL_CONF="$(find_foxnet_conf)"
+if [[ -z "${LOCAL_CONF}" ]]; then
+  echo "No foxnet certificate at $LOCAL_CONF - exiting"
+  exit 0
+fi
+
+# Deckard workaround: change name from `foxnet_device.conf` to `foxnet.conf`, so
+# that the generated device name is `foxnet` and not `foxnet_device`
+if [[ "${LOCAL_CONF}" == "/persist/foxnet_device.conf" ]]; then
+  mount -o remount,rw /persist
+  ln "/persist/foxnet_device.conf" "/persist/foxnet.conf"
+  mount -o remount,ro /persist
+  LOCAL_CONF="/persist/foxnet.conf"
+fi
+
+# If there is a certificate, setup connections
+
+# For foxnet-enabled devices, start ssh
+systemctl start sshd || true
+
+# Create the foxnet wireguard connection
+if ! nmcli connection show foxnet &>/dev/null; then
+  echo "Registering wireguard"
+  # Some network manager bug (?) causes it to use this connection's DNS (nothing) if it is started before wifi, despite
+  # not providing any.  Giving it lower dns-priority than normal connections fixes this.
+  #
+  # It seems some network manager change defaulted new VPN connections to -10 priority, triggering this.  It is
+  # non-deterministic and seems to only occur reliably on initial connection creation.
+  echo "Registering wireguard config..."
+  nmcli connection import type wireguard file "$LOCAL_CONF"
+  nmcli connection modify foxnet +ipv4.dns-priority 99 +ipv6.dns-priority 99
+  # Because importing the connection started it, nmcli is going to basically refuse to fix DNS until all connections
+  # restart.  Note that running `nmcli networking off` is a scary operation here, as it will disable all network
+  # connections managed by NetworkManager (Which is all the important ones!) until `nmcli networking on` is run again.
+  # That means that we really really want to make sure that `nmcli networking on` is run, so we ignore any errors
+  # coming from `nmcli networking off`.
+  nmcli networking off || true
+  nmcli networking on
+  nmcli connection up foxnet
+fi
+
+# Delete old connection names on deckard
+nmcli connection delete foxnet_device || true
+
+# Read hostname from config if known
+hostname="$(sed -r 's/^# *Name: (.*)$/\1/;t;d' "$LOCAL_CONF")"
+
+# Returns true if we have a vanilla hostname (not globally unique)
+function is_vanilla_hostname()
+{
+  local curr_hostname=$(cat /etc/hostname)
+  [[ "${curr_hostname}" == steamdeck ]] || \
+  [[ "${curr_hostname}" == deckard ]]
+}
+
+# Set hostname if it is a vanilla image hostname
+if is_vanilla_hostname; then
+  # If this unit has a bad hostname stop sending bogus stats.
+  systemctl disable --now foxnetstatsd || true
+  if [[ -n $hostname ]]; then
+    echo >&2 "Setting hostname to: \"$hostname\""
+    echo "$hostname" > /etc/hostname
+    # Reboot right now, so we get the new hostname
+    reboot -f
+  else
+    echo >&2 "!! No hostname in our certificate, not changing"
+  fi
+fi
+
+# Install `foxnet` as an alias in `/etc/hosts`
+if ! grep -q foxnet /etc/hosts ; then
+  echo >&2 "Updating foxnet in hosts"
+  echo "10.77.77.1 foxnet" >> /etc/hosts
+fi
+
+# Start the stats daemon only after we have done initial setup once
+# (assuming we found a hostname, don't start as 'steamos')
+if ! is_vanilla_hostname; then
+  systemctl enable --now foxnetstatsd
+fi
+
+# On Deckard, we don't want to do the ev1command stuff
+if [ -e /persist ]; then
+  echo "Early-exiting to avoid ev1command.sh"
+  exit
+fi
+
+# Try to accept a foxnet command
+while true; do
+  echo "Checking for available command"
+  if [[ -e /dev/disk/by-label/ev1command ]]; then
+    mount LABEL="ev1command" /mnt
+    exec /mnt/ev1command.sh
+  elif curl -f -o /tmp/ev1command.sh 'http://10.77.77.1/ev1command.sh'; then
+    echo "Got ev1command.sh from 10.77.77.1"
+    exec bash /tmp/ev1command.sh
+  fi
+  echo "Found no command, retrying in 30 seconds"
+  sleep 30
+done

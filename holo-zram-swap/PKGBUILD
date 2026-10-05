@@ -1,0 +1,22 @@
+# Author : Clayton Craft <clayton@igalia.com>
+# Maintainer : Manuel A. Fernandez Montecelo <mafm@igalia.com>
+
+pkgname='holo-zram-swap'
+pkgver=0.3
+pkgrel=1
+pkgdesc='Configures ZRAM swap'
+arch=('any')
+license=('LGPL2.1')
+url='https://github.com/evlav/holo'
+source=(
+  'zram-generator.conf'
+  'zswap-disable.conf'
+)
+sha256sums=('1640d0ddf9f8a3085e155729e4d667ffa850e0e2ac197859bb58e0423d92e998'
+            'c1d5889e70d4a75a94eae8ea5290b273b177d63ba37abb346db108d0fe024404')
+
+package() {
+  depends=('zram-generator')
+  install -Dm644 zram-generator.conf -t "$pkgdir/usr/lib/systemd"
+  install -Dm644 zswap-disable.conf -t "$pkgdir/usr/lib/tmpfiles.d"
+}

@@ -1,0 +1,19 @@
+# Maintainer: Elliot Saba <sabae@valvesoftware.com>
+
+pkgname=qualcomm-linux-graphics-driver
+_srctag=20260619.1
+pkgver=${_srctag//-/.}
+pkgrel=4
+arch=('any')
+license=('Apache-2.0')
+pkgdesc="Qualcomm graphics driver"
+url='https://github.com/evlav/qualcomm-linux-graphics-driver/-/tree/$_srctag'
+depends=()
+sha512sums=('161c9c4df290c93b7b240571dbfbe6c48097a259f1178a195e0defa35860626115adcdbc89c45c4a334b35bd7c219855c7f26095d31b32458777658c32e2684a')
+makedepends=('git' 'rsync' 'openssh')
+
+source=("git+https://github.com/evlav/qualcomm-linux-graphics-driver.git#tag=$_srctag")
+
+package() {
+    rsync -a --exclude 'README.md' "${srcdir}"/${pkgname}/* "${pkgdir}"
+}

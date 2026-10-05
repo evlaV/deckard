@@ -1,0 +1,24 @@
+[Unit]
+Description=Android Debug Bridge FunctionFS
+PartOf=adbd.service
+Before=adbd.service
+
+# Run this after adbd-pre has run, can't mount `adb` filesystem until `ffs.adb` is added to `usb_gadget/g1/functions/`.
+After=adbd-pre.service
+Requires=adbd-pre.service
+
+[Mount]
+What=adb
+Where=/dev/usb-ffs/adb
+Type=functionfs
+Options=rmode=0777,fmode=0666
+
+[Install]
+WantedBy=usb-gadget.target
+
+# When adding or removing this service, also add or remove these services (include self for easy copy-paste):
+Also=adbd-pre.service
+Also=adbd-post.service
+Also=adbd.service
+Also=dev-usb\\x2dffs-adb.mount
+

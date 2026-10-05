@@ -1,0 +1,19 @@
+# Maintainer: Amanda M. Watson <amandaw@valvesoftware.com>
+
+pkgname=ps_mem
+pkgver=3.14
+pkgrel=4
+pkgdesc="Utility to report core memory usage per program"
+arch=('any')
+url="https://github.com/pixelb/ps_mem"
+license=('LGPL-2.1-only')
+depends=('python')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
+sha256sums=('ad8bf87f9b9acd9b0b4997445bd99a8eeace4d816b207d56b03c5a83fec00514')
+
+package() {
+  cd "$pkgname-$pkgver"
+  install -Dm755 ps_mem.py "$pkgdir/usr/bin/ps_mem"
+  install -Dm644 ps_mem.1 -t "$pkgdir/usr/share/man/man1/"
+  install -Dm644 LICENSE -t "$pkgdir/usr/share/licenses/$pkgname/"
+}

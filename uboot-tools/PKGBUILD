@@ -1,0 +1,37 @@
+# Maintainer: Anatol Pomozov
+# Contributor: Michael Lass <bevan@bi-co.net>
+# Contributor: Philipp Schrader <philipp.schrader+arch@gmail.com>
+
+# This so that our u-boot builds always happen in lockstep
+source ../deckard-uboot/uboot_common.pkgbuild
+
+pkgname=uboot-tools
+pkgver="${_uboot_srctag}"
+pkgrel="${_pkgrel:-1}"
+pkgdesc='U-Boot bootloader utility tools'
+arch=(x86_64 aarch64)
+url='https://www.denx.de/wiki/U-Boot/WebHome'
+license=(GPL)
+depends=(openssl)
+makedepends=(python python-setuptools swig)
+source=("git+https://github.com/evlav/deckard-u-boot.git#tag=${_uboot_srctag}")
+validpgpkeys=('1A3C7F70E08FAB1707809BBF147C39FF9634B72C')
+options=(!lto)
+sha1sums=('9c4707bb2d90ba11cf7d72ed9d6054643450c730')
+sha256sums=('41b58d2bfa7b819527129195499c48a54f1980ef72b2aa71625119cec38c2c6c')
+
+build() {
+  # Holo disable mold to fix build error
+  export LDFLAGS="${LDFLAGS//-fuse-ld=mold/}"
+
+  cd u-boot
+  make defconfig
+  make tools-all KBUILD_HOSTLDFLAGS=${LDFLAGS}
+}
+
+package() {
+  install -m 755 -d "$pkgdir"/usr/bin
+  install -m 755 -t "$pkgdir"/usr/bin/ u-boot/tools/{mk{,env}image,env/fw_printenv,img2srec,dumpimage,netconsole,jtagconsole,ncb,kwboot}
+  ln -s fw_printenv "$pkgdir"/usr/bin/fw_setenv
+  install -m 644 -Dt "$pkgdir"/usr/share/man/man1/ u-boot/doc/{mkimage,dumpimage,kwboot}.1
+}

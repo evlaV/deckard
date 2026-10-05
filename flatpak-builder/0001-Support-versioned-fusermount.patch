@@ -1,0 +1,126 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: "Jan Alexander Steffens (heftig)" <heftig@archlinux.org>
+Date: Thu, 24 Apr 2025 04:02:21 +0200
+Subject: [PATCH] Support versioned fusermount
+
+---
+ configure.ac          | 11 ++++++++---
+ meson.build           |  7 +++++++
+ src/builder-context.c |  4 ++--
+ src/meson.build       |  1 +
+ tests/Makefile.am.inc |  1 +
+ tests/libtest.sh      |  2 +-
+ tests/meson.build     |  1 +
+ 7 files changed, 21 insertions(+), 6 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 5a2e406924ef..58aa406fbda7 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -218,9 +218,14 @@ AC_ARG_WITH([fuse],
+                             [Only support this major version of FUSE])],
+             [fuse_major="$withval"],
+             [fuse_major=maximize-compatibility])
+-AS_IF([test $fuse_major = 2],
+-      [AC_DEFINE([ASSUME_FUSE_2], [],
+-                 [Define to speed up FUSE 2 at the cost of FUSE 3 compatibility])])
++if test x$fuse_major = x2; then
++        AC_DEFINE([ASSUME_FUSE_2], [], [Define to speed up FUSE 2 at the cost of FUSE 3 compatibility])
++        AC_PATH_PROGS([FUSERMOUNT], [fusermount2 fusermount], [fusermount])
++else
++        AC_PATH_PROGS([FUSERMOUNT], [fusermount3 fusermount], [fusermount])
++fi
++AC_DEFINE_UNQUOTED(FUSERMOUNT, ["$FUSERMOUNT"], [Path of fusermount executable])
++AC_SUBST(FUSERMOUNT)
+ 
+ GLIB_TESTS
+ 
+diff --git a/meson.build b/meson.build
+index 827f44883490..ca7abce32103 100644
+--- a/meson.build
++++ b/meson.build
+@@ -55,6 +55,13 @@ debugedit = find_program('debugedit', version: '>= 5.0')
+ appstreamcli = find_program('appstreamcli', version: '>= 0.15.0')
+ appstreamcli_compose = run_command(appstreamcli, ['compose', '--help'], check: true)
+ 
++# Look for an appropriate fusermount
++if get_option('fuse') == '2'
++  fusermount = find_program('fusermount2', 'fusermount')
++else
++  fusermount = find_program('fusermount3', 'fusermount')
++endif
++
+ subdir('src')
+ subdir('doc')
+ if get_option('tests')
+diff --git a/src/builder-context.c b/src/builder-context.c
+index 1467cc7c3a68..6799738606e8 100644
+--- a/src/builder-context.c
++++ b/src/builder-context.c
+@@ -855,7 +855,7 @@ static char *rofiles_unmount_path = NULL;
+ static void
+ rofiles_umount_handler (int signum)
+ {
+-  char *argv[] = { "fusermount", "-uz", NULL,
++  char *argv[] = { FUSERMOUNT, "-uz", NULL,
+                      NULL };
+ 
+   argv[2] = rofiles_unmount_path;
+@@ -995,7 +995,7 @@ gboolean
+ builder_context_disable_rofiles (BuilderContext *self,
+                                  GError        **error)
+ {
+-  char *argv[] = { "fusermount", "-u", NULL,
++  char *argv[] = { FUSERMOUNT, "-u", NULL,
+                      NULL };
+ 
+   if (!self->use_rofiles)
+diff --git a/src/meson.build b/src/meson.build
+index 917983476360..bda51aed8db7 100644
+--- a/src/meson.build
++++ b/src/meson.build
+@@ -30,6 +30,7 @@ yaml_dep = dependency('yaml-0.1', required: get_option('yaml'))
+ config_data = configuration_data()
+ config_data.set('FLATPAK_BUILDER_ENABLE_YAML', yaml_dep.found())
+ config_data.set_quoted('DEBUGEDIT', debugedit.full_path())
++config_data.set_quoted('FUSERMOUNT', fusermount.full_path())
+ config_data.set_quoted('GETTEXT_PACKAGE', meson.project_name())
+ config_data.set_quoted('PACKAGE_VERSION', meson.project_version())
+ config_data.set_quoted('PACKAGE_STRING', '@0@-@1@'.format(meson.project_name(), meson.project_version()))
+diff --git a/tests/Makefile.am.inc b/tests/Makefile.am.inc
+index 8cd31ae6734a..77e7d9e3f614 100644
+--- a/tests/Makefile.am.inc
++++ b/tests/Makefile.am.inc
+@@ -2,6 +2,7 @@ AM_TESTS_ENVIRONMENT = FLATPAK_TESTS_DEBUG=1 \
+ 	GI_TYPELIB_PATH=$$(cd $(top_builddir) && pwd)$${GI_TYPELIB_PATH:+:$$GI_TYPELIB_PATH} \
+ 	LD_LIBRARY_PATH=$$(cd $(top_builddir)/.libs && pwd)$${LD_LIBRARY_PATH:+:$$LD_LIBRARY_PATH} \
+ 	PATH=$$(cd $(top_builddir) && pwd):$${PATH} \
++	FUSERMOUNT=$(FUSERMOUNT) \
+ 	$(NULL)
+ 
+ if !WITH_SYSTEM_DEBUGEDIT
+diff --git a/tests/libtest.sh b/tests/libtest.sh
+index 9227b4bf91e8..ae082b934dc2 100644
+--- a/tests/libtest.sh
++++ b/tests/libtest.sh
+@@ -333,7 +333,7 @@ run_build_fail () {
+ # fuse support is needed (and the kernel module needs to be loaded) for several
+ # flatpak-builder tests
+ skip_without_fuse () {
+-    if [ ! -w /dev/fuse ] || ! command -v fusermount >/dev/null; then
++    if [ ! -w /dev/fuse ] || ! command -v "${FUSERMOUNT:-fusermount}" >/dev/null; then
+         echo "1..0 # SKIP this test requires fuse support"
+         exit 0
+     fi
+diff --git a/tests/meson.build b/tests/meson.build
+index aec77d17efdb..54931c84d9fe 100644
+--- a/tests/meson.build
++++ b/tests/meson.build
+@@ -6,6 +6,7 @@ test_env.set('FLATPAK_TESTS_DEBUG', '1')
+ test_env.set('G_TEST_SRCDIR', meson.current_source_dir())
+ test_env.set('G_TEST_BUILDDIR', meson.current_build_dir())
+ test_env.prepend('PATH', meson.current_build_dir() / '..' / 'src', separator: ':')
++test_env.set('FUSERMOUNT', fusermount.full_path())
+ 
+ test_names = [
+   'test-builder',

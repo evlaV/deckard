@@ -1,0 +1,18 @@
+# Maintainer: Elliot Saba <sabae@valvesoftware.com>
+
+pkgname=deckard-buttonledcontrol
+_srctag=20250707.2
+pkgver=${_srctag//-/.}
+pkgrel=3
+arch=('any')
+license=('MIT')
+pkgdesc="Deckard power button and LED controller"
+url='https://github.com/evlav/deckard-buttonledcontrol/-/tree/$_srctag'
+depends=('python-pyaml' 'python>=3.11' 'python<3.15')
+source=("git+https://github.com/evlav/deckard-buttonledcontrol.git#tag=$_srctag")
+sha512sums=('e1b967d4d9404c1fe87ea4daa20df56571a45469b67963ec6955b71952a6f3e2cc5ba35af1ddc07b237d7b7617bf400ec0da03a5c8d73c1c79e033ab8c5ec369')
+makedepends=('git' 'rsync' 'openssh')
+
+package() {
+   rsync -a --exclude 'README.md' "$srcdir"/deckard-buttonledcontrol/* "$pkgdir"
+}

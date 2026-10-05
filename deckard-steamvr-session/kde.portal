@@ -1,0 +1,5 @@
+# Expose only FileChooser in gamescope-session, the one interface neither the
+# holo nor the gamescope backend implements.
+[portal]
+DBusName=org.freedesktop.impl.portal.desktop.kde
+Interfaces=org.freedesktop.impl.portal.FileChooser;

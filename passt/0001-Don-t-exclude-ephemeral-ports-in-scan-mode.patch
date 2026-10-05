@@ -1,0 +1,26 @@
+From 70e2854bcf7ad69b00e5fd75878a932604bdc379 Mon Sep 17 00:00:00 2001
+From: Franz-Josef Haider <frajo@frajo.fi>
+Date: Mon, 24 Aug 2026 17:10:26 +0300
+Subject: [PATCH 1/1] Don't exclude ephemeral ports in scan mode.
+
+---
+ fwd_rule.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/fwd_rule.c b/fwd_rule.c
+index 04a0101..fff6abf 100644
+--- a/fwd_rule.c
++++ b/fwd_rule.c
+@@ -597,7 +597,8 @@ static void fwd_rule_parse_ports(struct fwd_table *fwd, bool del, uint8_t proto,
+ 
+ 	if (exclude_only) {
+ 		/* Exclude ephemeral ports */
+-		fwd_port_map_ephemeral(exclude);
++		if (!(flags & FWD_SCAN))
++			fwd_port_map_ephemeral(exclude);
+ 
+ 		fwd_rule_range_except(fwd, del, proto, addr, ifname,
+ 				      1, NUM_PORTS - 1, exclude,
+-- 
+2.55.0
+

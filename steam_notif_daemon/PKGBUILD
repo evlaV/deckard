@@ -1,0 +1,32 @@
+# Maintainer: Joshua Ashton <joshua@froggi.es>
+pkgname=steam_notif_daemon
+pkgver=v1.0.1
+pkgrel=6
+license=('MIT')
+pkgdesc='Simple XDG D-Bus Notification wrapper'
+makedepends=("meson" "systemd" "git")
+depends=(
+    "systemd-libs"
+    "curl"
+)
+arch=("x86_64")
+url='https://github.com/evlav/steam_notif_daemon'
+source=(
+    "${pkgname%-*}::git+https://github.com/evlav/steam_notif_daemon.git#tag=$pkgver"
+    "steam-notif-daemon.service"
+)
+sha512sums=('SKIP'
+            'b0c26226106b96f70376659b45077766616505c6e2b8b6b4724809190c1965efcead03098ce5f5bea39e451cdb7cb11bd4b87adc66a435aa2ad01de7b4800db1')
+
+build() {
+    cd "$pkgname"
+    arch-meson -Dsd-bus-provider=libsystemd build
+    ninja -C build
+}
+
+package() {
+    cd "$pkgname"
+    DESTDIR="$pkgdir/" ninja -C build install
+    install -TDm644 LICENSE "$pkgdir"/usr/share/licenses/"${pkgname%-*}"/LICENSE
+    install -TDm644 "${srcdir}/steam-notif-daemon.service" "${pkgdir}/usr/lib/systemd/user/steam-notif-daemon.service"
+}

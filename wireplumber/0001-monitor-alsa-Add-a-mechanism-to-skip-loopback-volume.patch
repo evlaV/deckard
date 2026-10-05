@@ -1,0 +1,40 @@
+From f21b6deddc4c4d48a9712cfcf54eaadc9390ef1c Mon Sep 17 00:00:00 2001
+From: Arun Raghavan <arunr@valvesoftware.com>
+Date: Mon, 31 Aug 2026 14:01:41 -0700
+Subject: [PATCH] monitor: alsa: Add a mechanism to skip loopback volume
+ forwarding
+
+Allows more fine-grained control for devices where we might not want the
+volume to be modified (e.g. when the attached filter chain might be
+affected by applications adjusting device volume).
+---
+ src/scripts/monitors/alsa.lua | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/src/scripts/monitors/alsa.lua b/src/scripts/monitors/alsa.lua
+index 27eee3d855c2..af1fc6a7ce2a 100644
+--- a/src/scripts/monitors/alsa.lua
++++ b/src/scripts/monitors/alsa.lua
+@@ -52,6 +52,10 @@ function CreateLoopback (properties)
+   local device_props = nil
+   local args = nil
+ 
++  -- Forward volume to device by default unless explicitly opted out
++  local fwd_vol_prop = properties ["node.create-loopback.forward-volume"]
++  local fwd_vol = fwd_vol_prop == nil or cutils.parseBool (fwd_vol_prop)
++
+   -- Set stream media class
+   if device_media_class == "Audio/Sink" then
+     stream_media_class = "Stream/Output/Audio"
+@@ -86,7 +90,7 @@ function CreateLoopback (properties)
+     ["audio.position"] = position,
+     ["alsa.loopback"] = true,
+     ["device.id"] = dev_id,
+-    ["card.profile.device"] = cpd,
++    ["card.profile.device"] = fwd_vol and cpd or nil,
+     ["priority.session"] = tonumber(pri_session) + 1,
+     ["session.suspend-timeout-seconds"] = sts
+   }
+-- 
+2.55.0
+

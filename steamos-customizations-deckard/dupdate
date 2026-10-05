@@ -1,0 +1,69 @@
+#!/bin/bash
+
+set -euo pipefail
+
+function usage
+{
+	echo "Usage: dupdate <subcommand> <arguments>"
+	echo
+	echo "Available subcommands:"
+	echo "  status         - Show current version and whether there's an update"
+	echo "  monitor        - Monitor progress of an in-progress dupdate"
+	echo "  update         - Installs the current target build. This may be a reinstall if the currently running system is the same as the current target"
+	echo "  installversion - Install a particular version (pass a version in the form shown by 'status')"
+	echo "  gettarget      - Print the current OS update channel (default: stable)"
+	echo "  settarget      - Sets the current OS update channel (use atomupd-manager list-targets)"
+	echo
+	echo "NOTE: dupdate is just a wrapper around atomupd-manager now!"
+}
+
+if [ "$#" -lt 1 ]; then
+	usage
+	exit 1
+fi
+
+
+function get_update_id()
+{
+	sudo atomupd-manager check | sed -n -E 's/^ID: ([0-9]+\.[0-9]+).*$/\1/p'
+}
+
+case "$1" in
+	status)
+		source /etc/os-release
+		echo "Current Version: ${BUILD_ID}"
+		echo "Target: $(atomupd-manager tracked-branch)"
+		sudo atomupd-manager check
+		;;
+	monitor)
+		journalctl -u rauc -f
+		;;
+	update)
+		echo "Current target: $($0 gettarget)"
+		UPDATE_ID="$(get_update_id)"
+		if [[ -z "${UPDATE_ID}" ]]; then
+			echo "No update available!"
+			# We exit `1` here so that `dupdate update && reboot` does what you'd expect
+			exit 1
+		fi
+
+		echo "Updating to ${UPDATE_ID}"
+		sudo atomupd-manager update "${UPDATE_ID}"
+		;;
+	installversion)
+		sudo atomupd-manager custom-update "${2}"
+		;;
+	gettarget)
+		atomupd-manager tracked-branch
+		;;
+	settarget)
+		atomupd-manager switch-branch "${2}"
+		;;
+	targets)
+		atomupd-manager list-branches
+		;;
+	*)
+		echo "Unknown command '${1}'"
+		exit 1
+		;;
+esac

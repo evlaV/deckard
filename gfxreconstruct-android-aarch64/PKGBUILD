@@ -1,0 +1,47 @@
+source ../gfxreconstruct/gfxreconstruct_common.pkgbuild
+pkgname=gfxreconstruct-android-aarch64
+
+depends=()
+makedepends=(
+  'git' 'ninja' 'curl'
+  'meson' 'jdk17-openjdk'
+)
+
+build() {
+  # Prevent cmake from using host flags.
+  export CFLAGS=
+  export CXXFLAGS=
+  export CPPFLAGS=
+
+  export ANDROID_SDK_ROOT="$(pwd)/Android/Sdk"
+  export ANDROID_HOME="${ANDROID_SDK_ROOT}"
+
+  CMDLINE_TOOLS_VERSION="13114758"
+  CMDLINE_TOOLS_ZIP="commandlinetools-linux-${CMDLINE_TOOLS_VERSION}_latest.zip"
+  CMDLINE_TOOLS_URL="https://dl.google.com/android/repository/${CMDLINE_TOOLS_ZIP}"
+
+  curl -O "$CMDLINE_TOOLS_URL"
+
+  mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+
+  bsdtar -xf "$CMDLINE_TOOLS_ZIP" --strip-components 1 -C "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+
+  SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+
+  yes | "$SDKMANAGER" \
+          "platform-tools" \
+          "platforms;android-34" \
+          "build-tools;36.0.0" \
+          "ndk;26.3.11579264"
+
+  export JAVA_HOME="$(compgen -G "/usr/lib/jvm/java-17-openjdk")"
+
+  cd $srcdir/gfxreconstruct/android
+
+  ./gradlew assembleRelease
+}
+
+package() {
+  mkdir -p "${pkgdir}/usr/share/guestos/android/vendor/vulkan_layers"
+  install -m755 gfxreconstruct/android/layer/build/intermediates/cxx/RelWithDebInfo/*/obj/arm64-v8a/libVkLayer_gfxreconstruct.so "${pkgdir}/usr/share/guestos/android/vendor/vulkan_layers/"
+}

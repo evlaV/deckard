@@ -1,0 +1,189 @@
+Description: Revert^3 "Add rust demangling."
+ To avoid introduce new dependecy:
+ - https://android.googlesource.com/platform/external/rust/crates/rustc-demangle-capi
+ .
+ This reverts commit a8345a5764ceb0750729396ccfbaa763ae248f21.
+Forwarded: not-needed
+--- a/system/unwinding/libunwindstack/Android.bp
++++ b/system/unwinding/libunwindstack/Android.bp
+@@ -54,7 +54,6 @@ cc_defaults {
+ libunwindstack_common_src_files = [
+     "AndroidUnwinder.cpp",
+     "ArmExidx.cpp",
+-    "Demangle.cpp",
+     "DexFiles.cpp",
+     "DwarfCfa.cpp",
+     "DwarfEhFrameWithHdr.cpp",
+@@ -124,10 +123,6 @@ cc_defaults {
+         "libprocinfo",
+     ],
+ 
+-    whole_static_libs: [
+-        "librustc_demangle_static",
+-    ],
+-
+     shared_libs: [
+         "libbase",
+         "liblog",
+@@ -278,7 +273,6 @@ cc_defaults {
+         "tests/AndroidUnwinderTest.cpp",
+         "tests/ArmExidxDecodeTest.cpp",
+         "tests/ArmExidxExtractTest.cpp",
+-        "tests/DemangleTest.cpp",
+         "tests/DexFileTest.cpp",
+         "tests/DexFilesTest.cpp",
+         "tests/DwarfCfaLogTest.cpp",
+--- a/system/unwinding/libunwindstack/AndroidUnwinder.cpp
++++ b/system/unwinding/libunwindstack/AndroidUnwinder.cpp
+@@ -28,7 +28,6 @@
+ 
+ #include <unwindstack/AndroidUnwinder.h>
+ #include <unwindstack/Arch.h>
+-#include <unwindstack/Demangle.h>
+ #include <unwindstack/DexFiles.h>
+ #include <unwindstack/Error.h>
+ #include <unwindstack/JitDebug.h>
+@@ -46,11 +45,18 @@ static constexpr int kThreadUnwindSignal = BIONIC_SIGNAL_BACKTRACE;
+ static int kThreadUnwindSignal = SIGRTMIN;
+ #endif
+ 
++// Use the demangler from libc++.
++extern "C" char* __cxa_demangle(const char*, char*, size_t*, int* status);
++
+ namespace unwindstack {
+ 
+ void AndroidUnwinderData::DemangleFunctionNames() {
+   for (auto& frame : frames) {
+-    frame.function_name = DemangleNameIfNeeded(frame.function_name);
++    char* demangled_name = __cxa_demangle(frame.function_name.c_str(), nullptr, nullptr, nullptr);
++    if (demangled_name != nullptr) {
++      frame.function_name = demangled_name;
++      free(demangled_name);
++    }
+   }
+ }
+ 
+--- a/system/unwinding/libunwindstack/Demangle.cpp
++++ /dev/null
+@@ -1,51 +0,0 @@
+-/*
+- * Copyright (C) 2023 The Android Open Source Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-
+-#include <cxxabi.h>
+-#include <stdlib.h>
+-
+-#include <string>
+-
+-#include <rustc_demangle.h>
+-
+-#include <unwindstack/Demangle.h>
+-
+-namespace unwindstack {
+-
+-std::string DemangleNameIfNeeded(const std::string& name) {
+-  if (name.length() < 2 || name[0] != '_') {
+-    return name;
+-  }
+-
+-  char* demangled_str = nullptr;
+-  if (name[1] == 'Z') {
+-    // Try to demangle C++ name.
+-    demangled_str = abi::__cxa_demangle(name.c_str(), nullptr, nullptr, nullptr);
+-  } else if (name[1] == 'R') {
+-    // Try to demangle rust name.
+-    demangled_str = rustc_demangle(name.c_str(), nullptr, nullptr, nullptr);
+-  }
+-
+-  if (demangled_str == nullptr) {
+-    return name;
+-  }
+-
+-  std::string demangled_name(demangled_str);
+-  free(demangled_str);
+-  return demangled_name;
+-}
+-
+-}  // namespace unwindstack
+--- a/system/unwinding/libunwindstack/Unwinder.cpp
++++ b/system/unwinding/libunwindstack/Unwinder.cpp
+@@ -25,12 +25,10 @@
+ 
+ #include <algorithm>
+ #include <memory>
+-#include <string>
+ 
+ #include <android-base/file.h>
+ #include <android-base/stringprintf.h>
+ 
+-#include <unwindstack/Demangle.h>
+ #include <unwindstack/DexFiles.h>
+ #include <unwindstack/Elf.h>
+ #include <unwindstack/JitDebug.h>
+@@ -41,6 +39,9 @@
+ 
+ #include "Check.h"
+ 
++// Use the demangler from libc++.
++extern "C" char* __cxa_demangle(const char*, char*, size_t*, int* status);
++
+ namespace unwindstack {
+ 
+ // Inject extra 'virtual' frame that represents the dex pc data.
+@@ -325,7 +326,15 @@ std::string Unwinder::FormatFrame(ArchEnum arch, const FrameData& frame, bool di
+   }
+ 
+   if (!frame.function_name.empty()) {
+-    data += " (" + DemangleNameIfNeeded(frame.function_name);
++    char* demangled_name = __cxa_demangle(frame.function_name.c_str(), nullptr, nullptr, nullptr);
++    if (demangled_name == nullptr) {
++      data += " (";
++      data += frame.function_name;
++    } else {
++      data += " (";
++      data += demangled_name;
++      free(demangled_name);
++    }
+     if (frame.function_offset != 0) {
+       data += android::base::StringPrintf("+%" PRId64, frame.function_offset);
+     }
+--- a/system/unwinding/libunwindstack/include/unwindstack/Demangle.h
++++ /dev/null
+@@ -1,25 +0,0 @@
+-/*
+- * Copyright (C) 2023 The Android Open Source Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-
+-#pragma once
+-
+-#include <string>
+-
+-namespace unwindstack {
+-
+-std::string DemangleNameIfNeeded(const std::string& name);
+-
+-}  // namespace unwindstack

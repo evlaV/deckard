@@ -1,0 +1,105 @@
+pkgname=deckard-steamvr-session
+pkgver=1.7.0
+pkgrel=4
+pkgdesc="SteamVR session manager for deckard"
+arch=('aarch64')
+url="https://store.steampowered.com/app/250820/SteamVR/"
+license=('MIT')
+depends=(
+    'deckard-steamvr'
+    'deckard-steam'
+    'gamescope'
+    'sddm'
+)
+makedepends=()
+optdepends=(
+    'xdg-desktop-portal-kde: FileChooser portal in gamescope-session'
+)
+backup=()
+source=(
+    # Gamescope session
+    'gamescope-session'
+    'gamescope-session.service'
+    'gamescope-session.target'
+    'gamescope-cleanup'
+    'gamescope-env-list'
+    'gamescope-onready'
+    'ibus-gamescope.service'
+    'start-gamescope-session'
+    'gamescope-wayland.desktop'
+
+    # Plasma session
+    'plasma-session.target'
+    'plasma.desktop'
+    'steamvr-plasma.service'
+
+    # SDDM
+    'steamos-session-select'
+    'sddm-steamos.conf'
+
+    # Configs
+    'mesavars.sh'
+    'gamescope-portals.conf'
+    'kde.portal'
+)
+sha256sums=('94e1db14c99c71de712d9e15a922b0b96f66e1d0e511bd6c35885f4dea620909'
+            '41f2c2f77f6908801607ec97db5b4880c5945f6462b1dfc3c399d3b259af8576'
+            'a1ef74b0a9d7268ef3692bfbea251f32f5460938b07bb0105be507a88b9d86b2'
+            '0e2850063f046ec268e01aec13a98bb8bbecc96ef65c9bcbf9937512518cd6a8'
+            '09ab8bda06edb8590127a9e2a1e0971a1721a8e3c69a75dc7d279a3e625d781b'
+            'dc21cbf655f1abf4a8e6223b6d3c9e544b0a20d5ef4c541c7d8a96f089680570'
+            'bd034682bd9cb9a2da2fb4db00a003339ae30cf025e4002bfe38c4b96ea858ed'
+            '53d7ab629ae0fa46120483db22869f96293f6a653ba261af9d3286521040b9ae'
+            '1deb9265517fccbc7d0f2857291ed77bf567bba3fbe9684d4738d3a6de998dc4'
+            '77b547fbe004e1ac63f2e562e13d5516e7e30c5800a8e80d19bf400baa29ab62'
+            '7780bd9c0c7e4cb93708887d18b8dda4a90f05c71674fc363a6994bcf24e7108'
+            '14481da800e0dd2f33dbc2d7ffe7d996f121bafeb72e7dafc1941fdfd48b215e'
+            '092e6a46eaa164140c7886180e65712939a56ef127447314e644263da761b693'
+            'f4b1ad14d3823dc7722c01214fd071064eb5da8527cfb8927ced0044809208d7'
+            '4c642e067d933154c401b931665b5c64c8f4a1be1bed5975ea14424b65e18938'
+            'd7a4c848c22f689f6f5d1a8ee98b666b2aaf9cfff92a3caeebda2b08824d8a8a'
+            'cebca6cd4c01ea055deaa59c5e9d07d4ed0a29307c9fdfb034ecd25e9e8c7715')
+
+package() {
+    install -TDm755 mesavars.sh "${pkgdir}/usr/share/deckard/mesavars.sh"
+
+    STEAMOS_SCRIPTS=(
+        gamescope-session
+        gamescope-env-list
+        gamescope-cleanup
+        gamescope-onready
+    )
+    for SCRIPT in "${STEAMOS_SCRIPTS[@]}"; do
+        install -TDm755 "${SCRIPT}" "${pkgdir}/usr/lib/steamos/${SCRIPT}"
+    done
+
+    # Install user systemd scripts
+    USER_SERVICES=(
+        plasma-session.target
+        gamescope-session.service
+        gamescope-session.target
+        steamvr-plasma.service
+        ibus-gamescope.service
+    )
+    for USER_SERVICE in "${USER_SERVICES[@]}"; do
+        install -TDm644 "${USER_SERVICE}" "${pkgdir}/usr/lib/systemd/user/${USER_SERVICE}"
+    done
+
+    # Install session .desktop files
+    SESSIONS=(
+        gamescope-wayland
+        plasma
+    )
+    for SESSION in "${SESSIONS[@]}"; do
+        install -TDm644 "${SESSION}.desktop" "${pkgdir}/usr/share/wayland-sessions/${SESSION}.desktop"
+    done
+
+    # Executable helpers
+    install -TDm755 steamos-session-select "${pkgdir}/usr/bin/steamos-session-select"
+    install -TDm755 start-gamescope-session "${pkgdir}/usr/bin/start-gamescope-session"
+    install -TDm644 sddm-steamos.conf "${pkgdir}/etc/sddm.conf.d/steamos.conf"
+
+    # portals
+    install -TDm644 gamescope-portals.conf "${pkgdir}/usr/share/xdg-desktop-portal/gamescope-portals/gamescope-portals.conf"
+    install -TDm644 kde.portal "${pkgdir}/usr/share/xdg-desktop-portal/gamescope-portals/kde.portal"
+}

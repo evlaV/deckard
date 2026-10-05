@@ -1,0 +1,51 @@
+# Maintainer: Holo Team
+# Contributor: Giancarlo Razzolini <grazzolini@archlinux.org>
+# Contributor: Bartłomiej Piotrowski <bpiotrowski@archlinux.org>
+# Contributor: Dave Reisner <dreisner@archlinux.org>
+# Contributor: Thomas Bächler <thomas@archlinux.org>
+
+# Holo: Enable the config options for `setsid` and `tr`
+# Requested in https://github.com/evlav/mash/tasks/-/issues/82
+# Holo: Set the march value for aarch64
+
+pkgname=mkinitcpio-busybox
+pkgver=1.36.1
+pkgrel=1.5
+pkgdesc='Base initramfs tools'
+arch=(x86_64 aarch64)
+url="https://www.busybox.net/"
+license=(GPL)
+depends=(glibc libxcrypt)
+options=(!buildflags)
+source=(https://busybox.net/downloads/busybox-$pkgver.tar.bz2{,.sig}
+        config)
+sha256sums=('b8cc24c9574d809e7279c3be349795c5d5ceb6fdf19ca709f80cde50e47de314'
+            'SKIP'
+            '7ec2b36fb3c6044542dbe14ab7598941f359de1d741dcc4a624f8ea40a85c116')
+validpgpkeys=('C9E9416F76E610DBD09D040F47B70C55ACC9965B') # Denis Vlasenko <vda.linux@googlemail.com>
+
+prepare() {
+  cd "busybox-$pkgver"
+
+  # Holo: Set the correct march value for aarch64
+  # TODO should this be proposed upstream?
+  if [ "$CARCH" = "aarch64" ]; then
+    local _march="armv8-a"
+  else
+    local _march=${CARCH/_/-}
+  fi
+  local safeflags="-march=$_march -mtune=generic -Os -pipe -fno-strict-aliasing"
+
+  # use make oldconfig for updating the config file
+  sed 's|^\(CONFIG_EXTRA_CFLAGS\)=.*|\1="'"$safeflags"'"|' "$srcdir/config" > .config
+}
+
+build() {
+  # reproducible build
+  export KCONFIG_NOTIMESTAMP=1
+  make -C "busybox-$pkgver"
+}
+
+package() {
+  install -Dm755 "$srcdir/busybox-$pkgver/busybox" "$pkgdir/usr/lib/initcpio/busybox"
+}

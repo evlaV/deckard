@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -euo pipefail
+
+echo "forwarding to steamos-readonly, update your scripts to invoke that directly!" >&2
+
+if [[ "${1:-}" == "--undo"* ]]; then
+	steamos-readonly enable
+else
+	steamos-readonly disable
+fi

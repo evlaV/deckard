@@ -1,0 +1,25 @@
+# Maintainer: Gabe Rowe <gaber@valvesoftware.com>
+
+pkgname=linux-firmware-deckard
+_commit=df2d800f106db81a34beb4d927e1991fa965d784
+pkgver=20260801.1+git${_commit:0:8}
+pkgrel=4
+pkgdesc="Firmware files for Linux"
+url="https://github.com/evlav/deckard-linux-firmware"
+license=('custom')
+arch=('any')
+makedepends=(rsync)
+options=('!strip' '!debug')
+
+source=("git+https://github.com/evlav/deckard-linux-firmware.git#commit=$_commit")
+sha256sums=('SKIP')
+validpgpkeys=('SKIP')
+
+package() {
+  mkdir -p "${pkgdir}/usr/lib/firmware"
+  rsync -a "${srcdir}/linux-firmware/"* "${pkgdir}/usr/lib/firmware/"
+  mkdir -p "${pkgdir}/usr/share/licenses/${pkgname}"
+  install -m644 ${srcdir}/linux-firmware/LICENCE.* "${pkgdir}/usr/share/licenses/${pkgname}"
+}
+
+# vim:set sw=2 et:

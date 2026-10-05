@@ -1,0 +1,2 @@
+# libcomposite is needed for `adbd` to be used over USB
+libcomposite

@@ -1,0 +1,194 @@
+# Maintainer: Ludovico de Nittis <ludovico.denittis@collabora.com>
+# Maintainer: Vivek Das Mohapatra <vivek.dasmohapatra@collabora.com>
+
+pkgname=steamos-customizations-deckard
+_srctag=deckard-20261002.1
+_srcver=${_srctag#deckard-}
+pkgver=${_srcver//-/.}
+pkgrel=3
+pkgdesc='SteamOS customizations (Deckard fork) - This package installs various SteamOS-specific files'
+arch=('any')
+url='http://repo.steampowered.com'
+license=('LGPLv2+')
+depends=('e2fsprogs' 'gptfdisk' 'rsync' 'util-linux' 'mkinitcpio' 'uboot-tools') # 'usb-gadget-tools')
+makedepends=('git' 'openssh' 'systemd')
+provides=("${pkgname%-git}")
+conflicts=("${pkgname%-git}")
+source=(
+	"${pkgname%-git}::git+https://github.com/evlav/deckard-steamos-customizations.git#tag=${_srctag}"
+
+	# jupiter-hw-support commands and sundry
+	"steamos-select-branch"
+	"steamos-update"
+	"steamos-prepare-oobe-test"
+	"jupiter-biosupdate"
+	"org.valve.steamos.prepare-oobe-test.policy"
+
+	# muscle-memory old commands
+	"dupdate"
+	"atomupd-client.conf"
+	"makerootfsrw"
+
+	# image signing keys.
+	"frame-main.cert.pem"
+	"steamos-stable.cert.pem"
+
+	# This exists in jupiter-legacy-support, so we include it here for Deckard.
+	# We need this otherwise flatpak doesn't setup its directory structure properly.
+	"flatpak-modify-flathub-beta.service"
+
+	# This is deckard-specific; we run with special CPUAffinity settings to keep
+	# most services off of the power-hungry cores, but we want SSH sessions to
+	# have the full power of the unit.
+	"override-sshd-cpu-affinity.conf"
+
+	# USB gadget customization
+	"override-usb-gadget.conf"
+	"override-adbd.conf"
+	"typec-plug-event.rules"
+	"typec-plug-event.sh"
+	"usb-ncm-dnsmasq.sh"
+	"usb-ncm-dnsmasq@.service"
+	"usb-ncm-gadget.sh"
+	"usb-ncm-gadget@.service"
+
+	# We customize rtkit's behavior
+	"override-rtkit-limits.conf"
+
+	# CPU scheduler setting
+	"steamos-scheduler.service"
+	"steamos-scheduler.default"
+
+	# We have a couple of bash shortcuts that we like to use
+	"vrshortcuts.sh"
+	"serial_resize.sh"
+
+	# Work around podman behavior for lepton
+	"lepton-podman-timeout.conf"
+
+	# Allow proxy variables through `sudo`
+	"sudo_proxy_vars"
+
+	# steamos-bootconf set-mode service
+	'steamos-boot.service'
+
+	# fex bash helper script
+	'FEXBash'
+
+	# initrd generation, wrapped for U-Boot
+	'deckard-uimage'
+)
+sha256sums=('SKIP'
+            'd6a3ca94997196e597664dfbb8398cf895020724824d435ab1014c4492b4a8d6'
+            'c2e0eb8c6e62bb802f49afc49f9983777550037fc2be74b00e229cde207aaeb8'
+            '80f9cc2e7ed1e8ed512c0d258cdec09405bf1cc258b012be7259530f26db87d0'
+            '5402c271a6877280cac602161bbdbe0fb61d6b1ef02428fb4d69f60ce3916962'
+            '27739fb50e5c2dd50e3373b22b5ceabb6eb2f6f34b723794cf9a2f911a483f65'
+            '748a6afa0fe858170ccd43fe63da81048edeba469e8b14165fd37239623b818c'
+            '227877f3c53dcb4936c8e70116525a7fbd1771bee721796c921ee70f2ca98a58'
+            '0202861fb00afa94e936c93c5eb56631e81998813a24f21bcf5cd820a2a4dbd4'
+            'f42090ff488c7e39b50ed35841e991fc685b3c911ab66cf0e093c9e0c0648ec2'
+            '1d6e246961284ee152cce21e5197a2a0f03dc2fbc0f66a66566850b77714100d'
+            'a7b8b21e285dac1f255546d1acc46d4423a1fa0e964153a96118b884001d0648'
+            '83e9abe20f1719d6fb6ee59d35207c5788570b2ba75ab48b1d318be48f6bc217'
+            '16ca199fde05088b5468d9e2de352c8c9dad6e81ed34192a4f914717aa0bbcf1'
+            '9bda1514da6f26dd773af2abc4a569f88a02590b5e8eae566006108801c62336'
+            '53c963252532edf1297451b1488798bef4abf04fae4e56b370257a581e0e04c2'
+            '7a140232c325789f1f7644152f4d4d3c866e65cbd685ac04f2867590c7551175'
+            'a46e66116168e9d6b00f878a0a008611d8eea703ce106df53b94e9cbf89c2063'
+            'f091a2c97886d62cd82ee0cdc034f4630c0e684bc5c7df3a9b29a010ce7e61df'
+            '34e6951f4d3d2b34711cdcc11ba47e573d558d10465a3b8a353ddc3ddc42cb5b'
+            'cd059dcebd04453f28f98083f96d5ecd4fe6ce6dbdf0b5f63c8bb18d07097e8a'
+            'd34830bb1e720c411781a00d2a2c12e0d86ceb14fc466ef856738a1e66dc9c2e'
+            '2255b9358cf8a0a03ef8f2ef19da1e91767123b3ec7593b5361c7ab1022943a1'
+            '6cb55a934db192acef9a110ffe2df59e6d91e2232c4078c274f0730057b562d1'
+            'e3a2d35d9143ebc95c38eaef4ae6e2f503b70325b89fef05ac0c7758bff054dc'
+            '585e0e5ba1bbcd720b92ef93f0e707172bf7ed746eb76774658b1a3d703932b1'
+            '33b72031c61f58972dd73fa141a1a5c36d9fe1960936f3465675e3b3a79581e2'
+            'fb8237ad74d9adbd3dbd074ab51992fe8d50187cbc3954bc97ac29e1485da4c9'
+            '6fd9ff9e6e5f434c171f2f0fe127b70e387ae165cbf0b328b35e0d0bcfc1aa69'
+            '8a907f46e455bf26d6bf2f2c09cf28e4aed6e2105a74c870a3d61c49b554e2d1'
+            'ec9aaa5d06ecc8a8b244f0039cec22614eac97bb31266488a95aa7e92c4d84e9')
+
+package() {
+	# Install specific pieces of configuration that we want
+	INSTALL_TARGETS=(
+		install-atomic-update
+		install-debuginfod
+		install-desync
+		install-misc
+		install-NetworkManager
+		install-offload
+		#install-swap # <--- not doing this until we experiment with turning on hibernation
+	)
+	cd "${pkgname%-git}"
+	make DESTDIR="$pkgdir" prefix="/usr" sbindir="/usr/bin" libexecdir="/usr/lib" \
+		 ATOMUPD_META_URL=https://steamdeck-atomupd.steamos.cloud/meta \
+		 ATOMUPD_IMAGES_URL=https://steamdeck-images.steamos.cloud/ \
+		 ATOMUPD_VARIANTS_LIST='vr' \
+		 ATOMUPD_BRANCHES_LIST='stable;rc;beta;bc;preview;pc;main' \
+		 "${INSTALL_TARGETS[@]}"
+
+	# We have authentication credentials saved in this file while our repositories are still secret
+	# We can drop this once we're no longer hiding behind an authenticated endpoint
+	install -TDm644 "${srcdir}/atomupd-client.conf" "${pkgdir}/etc/steamos-atomupd/client.conf"
+
+	# We don't install the jupiter-hw-support package, so we have dummy scripts here
+	install -TDm755 "${srcdir}/jupiter-biosupdate" "${pkgdir}/usr/bin/jupiter-biosupdate"
+	install -TDm755 "${srcdir}/jupiter-biosupdate" "${pkgdir}/usr/bin/steamos-polkit-helpers/jupiter-biosupdate"
+	install -TDm755 "${srcdir}/steamos-select-branch" "${pkgdir}/usr/bin/steamos-select-branch"
+	install -TDm755 "${srcdir}/steamos-update" "${pkgdir}/usr/bin/steamos-update"
+	install -TDm755 "${srcdir}/steamos-prepare-oobe-test" "${pkgdir}/usr/bin/steamos-prepare-oobe-test"
+	install -TDm644 "${srcdir}/org.valve.steamos.prepare-oobe-test.policy" "${pkgdir}/usr/share/polkit-1/actions/org.valve.steamos.prepare-oobe-test.policy"
+
+
+	# We include this file because lots of people have muscle-memory to use `dupdate` instead of `atomupd-manager`
+	install -TDm755 "${srcdir}/dupdate" "${pkgdir}/usr/bin/dupdate"
+	install -TDm755 "${srcdir}/makerootfsrw" "${pkgdir}/usr/bin/makerootfsrw"
+
+	install -TDm644 "${srcdir}/frame-main.cert.pem" "${pkgdir}/etc/rauc/development_keys/2549da1b.0"
+	install -TDm644 "${srcdir}/steamos-stable.cert.pem" "${pkgdir}/etc/rauc/trusted_keys/ba942c60.0"
+
+	install -TDm644 "${srcdir}/flatpak-modify-flathub-beta.service" "${pkgdir}/usr/lib/systemd/system/flatpak-modify-flathub-beta.service"
+
+	# System service customizations
+	install -TDm644 "${srcdir}/typec-plug-event.rules" "${pkgdir}/usr/lib/udev/rules.d/typec-plug-event.rules"
+	install -TDm755 "${srcdir}/typec-plug-event.sh" "${pkgdir}/usr/share/deckard/typec-plug-event.sh"
+	install -TDm644 "${srcdir}/override-usb-gadget.conf" "${pkgdir}/usr/lib/systemd/system/usb-gadget-init.service.d/usb-gadget.conf"
+	install -TDm644 "${srcdir}/override-adbd.conf" "${pkgdir}/usr/lib/systemd/system/adbd-init.service.d/adbd.conf"
+	install -TDm644 "${srcdir}/override-adbd.conf" "${pkgdir}/usr/lib/systemd/system/adbd.service.d/adbd.conf"
+	install -TDm644 "${srcdir}/override-sshd-cpu-affinity.conf" "${pkgdir}/usr/lib/systemd/system/sshd.service.d/sshd-cpu-affinity.conf"
+	install -TDm644 "${srcdir}/override-rtkit-limits.conf" "${pkgdir}/usr/lib/systemd/system/rtkit-daemon.service.d/rtkit-limits.conf"
+	install -TDm755 "${srcdir}/usb-ncm-dnsmasq.sh" "${pkgdir}/usr/share/deckard/usb-ncm-dnsmasq.sh"
+	install -TDm644 "${srcdir}/usb-ncm-dnsmasq@.service" "${pkgdir}/usr/lib/systemd/system/usb-ncm-dnsmasq@.service"
+	install -TDm755 "${srcdir}/usb-ncm-gadget.sh" "${pkgdir}/usr/share/deckard/usb-ncm-gadget.sh"
+	install -TDm644 "${srcdir}/usb-ncm-gadget@.service" "${pkgdir}/usr/lib/systemd/system/usb-ncm-gadget@.service"
+
+	# Helpful bash shortcuts
+	install -Dm755 "${srcdir}/vrshortcuts.sh" "${pkgdir}/etc/bashrc.d/vrshortcuts.sh"
+	install -Dm755 "${srcdir}/serial_resize.sh" "${pkgdir}/etc/profile.d/serial_resize.sh"
+
+	# CPU scheduler setting
+	install -Dm644 "${srcdir}/steamos-scheduler.service" "${pkgdir}/usr/lib/systemd/user/steamos-scheduler.service"
+	install -Dm644 "${srcdir}/steamos-scheduler.default" "${pkgdir}/etc/default/steamos-scheduler"
+	mkdir -p "${pkgdir}/usr/lib/systemd/user/graphical-session.target.wants"
+	ln -Ts ../steamos-scheduler.service "${pkgdir}/usr/lib/systemd/user/graphical-session.target.wants/steamos-scheduler.service"
+
+	# Mark good service
+	install -Dm644 "${srcdir}/steamos-boot.service" "${pkgdir}/usr/lib/systemd/system/steamos-boot.service"
+
+	# Install podman dropin for lepton
+	install -TDm644 "${srcdir}/lepton-podman-timeout.conf" "${pkgdir}/usr/lib/systemd/user/podman.service.d/lepton-podman-timeout.conf"
+
+	# Allow HTTP proxy variables through the `sudo` boundary
+	install -Dm600 "${srcdir}/sudo_proxy_vars" "${pkgdir}/etc/sudoers.d/proxy_vars"
+
+	# FEXBash helper script to try to run FEXBash within steam dir if SLR4 and FEX-Emu compat tools exist
+	install -TDm755 "${srcdir}/FEXBash" "${pkgdir}/usr/bin/FEXBash"
+
+	# Wrap the initramfs built from our kernels' mkinitcpio presets for U-Boot
+	install -TDm755 "${srcdir}/deckard-uimage" "${pkgdir}/usr/lib/initcpio/post/deckard-uimage"
+
+	# TODO: Make hibernation work
+	rm -rf "${pkgdir}/usr/lib/systemd/sleep.conf.d"
+}

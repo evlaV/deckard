@@ -1,0 +1,73 @@
+# Maintainer: Vivek Das Mohapatra <vivek@collabora.com>
+# NOTE: based on the debian packaging of boringssl
+
+pkgname=android-boringssl
+debver=14.0.0+r45 # we use this to fetch the source
+deburl=https://salsa.debian.org/android-tools-team/android-platform-external-boringssl.git
+pkgver=${debver/+/.}
+pkgrel=5
+pkgdesc="Google's internal fork of OpenSSL for the Android SDK"
+arch=('x86_64' 'aarch64')
+url='https://android.googlesource.com/platform/external/boringssl'
+license=('Apache-2.0' 'BSD-3-clause' 'Expat' 'ISC' 'OpenSSL' 'public-domain' 'SSLeay')
+depends=('glibc' 'gcc-libs')
+makedepends=('clang' 'gtest' 'lld')
+
+source=("android-boringssl::git+${deburl}#tag=upstream/${debver}"
+        'copyright'
+        'sources.mk'
+        'boringssl.mk'
+        'prettyprint.mk'
+)
+sha256sums=('SKIP'
+            '85b3073149f23babcc713d9a1429090d1d22b19ca8e735f1c94342f0c1d8078b'
+            '269189f788d0692eb7f911523b1c6bc0845725ca80b3015d6f4264977519f784'
+            '66d5b849300718bfd3e57ff8f89aae8b9d9c64d38a5ba451f4e5f3793245b830'
+            '9a9993de5c66f3ef31ff01de5cb3c9a2f29b64bfc38eae17652498803797f83e'
+)
+
+prepare() {
+  local patch=
+  cd "$pkgname"
+
+  for patch in "${source[@]}"
+  do
+    case $patch in
+      *.patch) patch -p1 < ../"$patch" ;;
+    esac
+  done
+}
+
+build() {
+  local -r srcd=$(pwd)
+  local -r VPATH=$(readlink -f ${srcd}/${pkgname})
+
+  mkdir -p ${srcd}/build
+  cd ${srcd}/build
+
+  # ======================================================
+  # The debug-flags target is handy if you're looking
+  # for the CFLAGS et al that are set by makepkg.
+  # ======================================================
+  # run V=1 makepkg … to get show the full commands run.
+  make CARCH=${CARCH} VPATH=${VPATH} -f ../boringssl.mk all
+}
+
+check() {
+  local -r srcd=$(pwd)
+  local -r VPATH=$(readlink -f ${srcd}/${pkgname})
+
+  cd ${srcd}/build
+  make PKGNAME=${pkgname} CARCH=${CARCH} VPATH=${VPATH} \
+       -f ../boringssl.mk check
+}
+
+package() {
+  local -r srcd=$(pwd)
+  local -r VPATH=$(readlink -f ${srcd}/${pkgname})
+  local -r DST=$(readlink -f ../pkg)/${pkgname}
+
+  cd build
+  make DESTDIR=${DST} CARCH=${CARCH} VPATH=${VPATH} -f ../boringssl.mk install
+  install -D -t $DST/usr/share/doc/${pkgname} ../copyright
+}

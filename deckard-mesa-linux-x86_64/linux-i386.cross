@@ -1,0 +1,20 @@
+[binaries]
+c = 'clang'
+cpp = 'clang++'
+strip = 'strip'
+pkgconfig = 'pkg-config'
+llvm-config = 'llvm-config32'
+
+[built-in options]
+c_args = ['-m32', '-mfpmath=sse', '-march=x86-64-v3', '-mstackrealign']
+cpp_args = ['-m32', '-mfpmath=sse', '-march=x86-64-v3', '-mstackrealign']
+c_link_args = ['-m32', '-mfpmath=sse', '-march=x86-64-v3', '-mstackrealign']
+cpp_link_args = ['-m32', '-mfpmath=sse', '-march=x86-64-v3', '-mstackrealign']
+libdir = 'lib32'
+pkg_config_path = '/usr/lib32/pkgconfig'
+
+[host_machine]
+system = 'linux'
+cpu_family = 'x86'
+cpu = 'x86'
+endian = 'little'

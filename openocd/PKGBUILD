@@ -1,0 +1,28 @@
+pkgname=openocd
+pkgver=0.12.0
+pkgrel=1.3
+pkgdesc="Debugging, in-system programming and boundary-scan testing for embedded target devices"
+# Current tip of `linuxgpiodv2-emulate-v2-for-v1` branch
+_commit=64fb747da331793ccdbdc3b432f14d719fb0f81b
+url="https://github.com/mhei/openocd.git"
+source=("git+$url#commit=${_commit}")
+arch=('aarch64')
+license=('GPL')
+depends=('libgpiod')
+makedepends=('git' 'automake>=1.11' 'autoconf' 'libtool')
+options=('!strip')
+sha256sums=('df1114be82e16255f7a1d827233d5480ca1bb569387f0fed3ad351ee98f8ec91')
+
+build() {
+  cd "$srcdir/${pkgname}"
+
+  ./bootstrap
+  ./configure --prefix=/usr \
+              --disable-werror
+  make
+}
+
+package() {
+  cd "$srcdir/${pkgname}"
+  make "DESTDIR=${pkgdir}" install
+}
