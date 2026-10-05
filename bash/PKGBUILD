@@ -1,0 +1,111 @@
+# Maintainer: Levente Polyak <anthraxx[at]archlinux[dot]org>
+# Maintainer: Tobias Powalowski <tpowa@archlinux.org>
+# Contributor: Giancarlo Razzolini <grazzolini@archlinux.org>
+# Contributor:  Bartłomiej Piotrowski <bpiotrowski@archlinux.org>
+# Contributor: Allan McRae <allan@archlinux.org>
+# Contributor: Aaron Griffin <aaron@archlinux.org>
+
+pkgname=bash
+_basever=5.3
+_patchlevel=3
+pkgver=${_basever}.${_patchlevel}
+pkgrel=4
+pkgdesc='The GNU Bourne Again shell'
+arch=(x86_64 aarch64)
+license=('GPL-3.0-or-later')
+url='https://www.gnu.org/software/bash/bash.html'
+backup=(
+  etc/bash.bash{rc,_logout} 
+  etc/skel/.bash{rc,_profile,_logout}
+)
+depends=(
+  readline
+  libreadline.so
+  glibc
+  ncurses
+)
+optdepends=('bash-completion: for tab completion')
+provides=('sh')
+install=bash.install
+source=(
+  https://ftpmirror.gnu.org/gnu/bash/bash-$_basever.tar.gz{,.sig}
+  dot.bashrc
+  dot.bash_profile
+  dot.bash_logout
+  system.bashrc
+  system.bash_logout
+)
+validpgpkeys=('7C0135FB088AAF6C66C650B9BB5869F064EA74AB') # Chet Ramey
+
+if [[ $((10#${_patchlevel})) -gt 0 ]]; then
+  for (( _p=1; _p<=$((10#${_patchlevel})); _p++ )); do
+    source=(${source[@]} https://ftpmirror.gnu.org/gnu/bash/bash-$_basever-patches/bash${_basever//.}-$(printf "%03d" $_p){,.sig})
+  done
+fi
+b2sums=('82d1b54322bbd1e8c2a93380f1b2888a42a1d7186e504f41cee705a0fdd41463d8f20baa1755051e1396192f8ebd089524767d933a9e0b5fb76f2588601539bb'
+        'SKIP'
+        '61cc3b7c9e85ae29b48518a2579896cb037153184a233cb5636d8dce4c2a2fded88624c9d5a986d86fdd4b0d521828b510c7a0d16b3c8b95cfca8d4c0a74da17'
+        '2d53f99e485218ed47f2e40907023645594ac8ffcf00d0569050d54a8f4dabe0a2bdcab515a45b663283c2e6299d805b923ea7b7b789c6a4150c37a98a5b117c'
+        'dbfe5c1aaea94419305c1f8c9b54b94eab515260910f2309360ff702a27032faa34514e70b31adbb1e41bd912d4e43a610939cb07565f43e05dd19813a81752e'
+        'd063f25d5e406031eb67d75d4322b17a71255cdc9807349e3c8dcf198516156a9ea84e38630e4024286151e804ee13f1d34bbefa24985dfb5ac56bc2c724d03d'
+        'fc924345d5dab10f1ae328bca3cf1053ddff557e074a6e6dff771bd813b93838980ed5d0f20d3a0584cbd1994332fcacc8a6b0e98f7aa376139198ea6a4d6f5a'
+        'ca275ade6a7132d316a4d1ffd401c9bfc6de691c58531385d85087c4d50723aeacb5b4bc7abef0165b4fb3cbed146a0fefd9dae4c99c1547f61618798a772d29'
+        'SKIP'
+        'fec52c475b8126774290eab7a514f8145ae51edab150d413c09f5540719c9578fe1cb99987b6190a9cd82bd947e059c32e740a03d26e9d472af51356cafd8a32'
+        'SKIP'
+        '6bb6f6679726d65f95c11b4ac1fb0729eaebfeef02de06e9fda4e3ac2bb3d328cc6f7fd6e29976a0907390ed6709cd5a0a6046682acbed73eb0470143bf144e1'
+        'SKIP')
+
+prepare() {
+  cd "${pkgname}-${_basever}"
+  for (( _p=1; _p<=$((10#${_patchlevel})); _p++ )); do
+    local patch="bash${_basever//.}-$(printf "%03d" $_p)"
+    patch -Np0 -i ../"${patch}"
+  done
+  # add patches from gentoo, fixing various upstream reported issues
+  # https://gitweb.gentoo.org/repo/gentoo.git/tree/app-shells/bash/files
+}
+
+build() {
+  # Holo disable mold to fix build error
+  export LDFLAGS="${LDFLAGS//-fuse-ld=mold/}"
+
+  cd "${pkgname}-${_basever}"
+
+  _bashconfig=(-DDEFAULT_PATH_VALUE=\'\"/usr/local/sbin:/usr/local/bin:/usr/bin\"\'
+               -DSTANDARD_UTILS_PATH=\'\"/usr/bin\"\'
+               -DSYS_BASHRC=\'\"/etc/bash.bashrc\"\'
+               -DSYS_BASH_LOGOUT=\'\"/etc/bash.bash_logout\"\'
+               -DNON_INTERACTIVE_LOGIN_SHELLS
+               -std=gnu17)
+  export CFLAGS="${CFLAGS} ${_bashconfig[@]}"
+
+  ./configure \
+    --prefix=/usr \
+    --with-curses \
+    --enable-readline \
+    --without-bash-malloc \
+    --with-installed-readline
+  make
+}
+
+check() {
+  make -C "${pkgname}-${_basever}" check
+}
+
+package() {
+  make -C "${pkgname}-${_basever}" DESTDIR="$pkgdir" install
+  ln -s bash "${pkgdir}/usr/bin/sh"
+  ln -s bash "${pkgdir}/usr/bin/rbash"
+
+  # system-wide configuration files
+  install -Dm644 system.bashrc "${pkgdir}/etc/bash.bashrc"
+  install -Dm644 system.bash_logout "${pkgdir}/etc/bash.bash_logout"
+
+  # user configuration file skeletons
+  install -dm755 "${pkgdir}/etc/skel/"
+  install -m644 dot.bashrc "${pkgdir}/etc/skel/.bashrc"
+  install -m644 dot.bash_profile "${pkgdir}/etc/skel/.bash_profile"
+  install -m644 dot.bash_logout "${pkgdir}/etc/skel/.bash_logout"
+}
+
