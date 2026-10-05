@@ -1,0 +1,26 @@
+pkgname=usb-gadget-tools
+pkgver=20260331.1
+pkgrel=1
+pkgdesc='USB gadget tools'
+arch=('any')
+url='https://github.com/evlav/deckard-holo'
+license=('MIT')
+depends=('bash')
+makedepends=('bash')
+source=(
+    'usb-gadget-init.service'
+    'usb-gadget-init.sh'
+    'usb-gadget.service'
+    'usb-gadget.sh'
+)
+sha256sums=('227442339ae251ba6e2ea5874393f5e8dcb17b25964a05585517ce52838d7ca8'
+            'd7fb059cff7f047fae27b4be782a764023aa2df47a0adc83550ffa2a4081aa53'
+            '51d2a49a69b753c2f9c4b909ada4f98936fb93eaa4d0993c0bcc3865e03b8d4a'
+            '39999c9ca484c68cfd97b9612ca6fdbcf11bc6685886b97e323fec7aa439a660')
+
+package() {
+    install -TDm644 "${srcdir}/usb-gadget-init.service" "${pkgdir}/usr/lib/systemd/system/usb-gadget-init.service"
+    install -TDm644 "${srcdir}/usb-gadget.service" "${pkgdir}/usr/lib/systemd/system/usb-gadget.service"
+    install -TDm755 "${srcdir}/usb-gadget-init.sh" "${pkgdir}/usr/lib/usb-gadget-tools/usb-gadget-init.sh"
+    install -TDm755 "${srcdir}/usb-gadget.sh" "${pkgdir}/usr/lib/usb-gadget-tools/usb-gadget.sh"
+}

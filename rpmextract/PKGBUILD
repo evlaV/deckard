@@ -1,0 +1,25 @@
+# Maintainer: Tobias Powalowski <tpowa@archlinux.org>
+
+pkgname=rpmextract
+pkgver=1.0
+pkgrel=11
+pkgdesc="Script to convert or extract RPM archives (contains rpm2cpio)"
+url="http://www.archlinux.org"
+arch=('any')
+license=('GPL-2.0-only')
+depends=(
+  bash
+  coreutils
+  libarchive
+)
+source=(
+  rpmextract.sh
+  rpm2cpio
+)
+b2sums=('9926b737971f082b25786fc8d4187a0e12e83b844875263e90904bcdf3690211722acf1db5a6e92115f08dc8726554cf624ddfc91b14aacfdc3061a2ed5e292c'
+        'd505aec4c921f01e0fdce78474403c8c62bc80adb097e355199e3dec72896bec5d5931c91b0088a74d631fe77e8e04caf516d6534c9990b4c6f0593ac268fe98')
+
+package() {
+  install -D -m755 "${srcdir}"/rpmextract.sh "${pkgdir}"/usr/bin/rpmextract.sh
+  install -D -m755 "${srcdir}"/rpm2cpio "${pkgdir}"/usr/bin/rpm2cpio
+}

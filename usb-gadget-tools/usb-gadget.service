@@ -1,0 +1,21 @@
+[Unit]
+Description=USB gadget service
+Wants=usb-gadget-init.service
+After=usb-gadget-init.service
+DefaultDependencies=no
+
+# If this goes down, we go down too
+PartOf=usb-gadget.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+
+WorkingDirectory=/sys/kernel/config/usb_gadget
+EnvironmentFile=/run/usb-gadget-tools/env
+ExecStart=/usr/lib/usb-gadget-tools/usb-gadget.sh start
+ExecStop=/usr/lib/usb-gadget-tools/usb-gadget.sh stop
+
+# Automatically setup USB gadgets upon usb-gadget.target going active.
+[Install]
+WantedBy=usb-gadget.target

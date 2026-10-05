@@ -1,0 +1,28 @@
+[Unit]
+Description=USB gadget setup
+Wants=sys-kernel-config.mount run.mount
+After=sys-kernel-config.mount run.mount
+DefaultDependencies=no
+
+# If the whole `usb-gadget.target` goes down, take us down too.
+PartOf=usb-gadget.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+
+WorkingDirectory=/sys/kernel/config/usb_gadget
+
+# Give a default value for the gadget name
+Environment=USB_GADGET_NAME=g1
+
+# Write out all our environment variable mappings to a shared environment variable file"
+ExecStartPre=/usr/bin/mkdir -p /run/usb-gadget-tools
+ExecStartPre=/bin/bash -c "env | grep '^USB_GADGET_' >/run/usb-gadget-tools/env"
+
+ExecStart=/usr/lib/usb-gadget-tools/usb-gadget-init.sh start
+ExecStop=/usr/lib/usb-gadget-tools/usb-gadget-init.sh stop
+
+# Automatically setup USB gadgets upon usb-gadget.target going active.
+[Install]
+WantedBy=usb-gadget.target

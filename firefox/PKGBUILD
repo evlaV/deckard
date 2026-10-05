@@ -1,0 +1,58 @@
+# Maintainer: Gabe Rowe <gaber@valvesoftware.com>
+
+pkgname=firefox
+pkgver=152.0.3
+pkgrel=1
+pkgdesc="Fast, Private & Safe Web Browser"
+url="https://www.mozilla.org/firefox/"
+arch=(x86_64 aarch64)
+license=(MPL-2.0)
+depends=(
+  alsa-lib
+  at-spi2-core
+  bash
+  cairo
+  dbus
+  ffmpeg
+  fontconfig
+  freetype2
+  gdk-pixbuf2
+  glib2
+  glibc
+  gtk3
+  hicolor-icon-theme
+  libpulse
+  libx11
+  libxcb
+  libxcomposite
+  libxcursor
+  libxdamage
+  libxext
+  libxfixes
+  libxi
+  libxrandr
+  libxrender
+  libxt
+  libxss
+  libxt
+  nspr
+  nss
+  libxtst
+  pango
+  ttf-font
+  zlib
+)
+
+source_aarch64=("https://ftp.mozilla.org/pub/firefox/releases/${pkgver}/linux-aarch64/en-US/firefox-${pkgver}.tar.xz")
+source_x86_64=("https://ftp.mozilla.org/pub/firefox/releases/${pkgver}/linux-x86_64/en-US/firefox-${pkgver}.tar.xz")
+
+sha256sums_x86_64=('9bf6bb30bc95f208f87bcc9e84f9ebe68241d190aa9c77e57faf736037a59d37')
+sha256sums_aarch64=('9bf6bb30bc95f208f87bcc9e84f9ebe68241d190aa9c77e57faf736037a59d37')
+
+package() {
+  install -d "$pkgdir/usr/lib"
+  cp -a "$srcdir/firefox" "$pkgdir/usr/lib/firefox"
+
+  install -d "$pkgdir/usr/bin"
+  ln -s /usr/lib/firefox/firefox "$pkgdir/usr/bin/firefox"
+}
