@@ -1,7 +1,7 @@
 pkgname=gpu-ratemeter
 _commit=71f0e572255e9553e3531fd73043ed485fcaabcd
 pkgver=0.1+git${_commit:0:8}
-pkgrel=3
+pkgrel=1
 pkgdesc="Command-line GPU microbenchmark"
 arch=('aarch64')
 url="https://gitlab.freedesktop.org/mesa/gpu-ratemeter"
