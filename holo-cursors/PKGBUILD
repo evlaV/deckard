@@ -3,7 +3,7 @@
 pkgname=holo-cursors
 _srctag=v2
 pkgver=2
-pkgrel=3
+pkgrel=1
 arch=('any')
 url="https://github.com/evlav/holo-cursors"
 pkgdesc="Holo/SteamOS Cursors"
