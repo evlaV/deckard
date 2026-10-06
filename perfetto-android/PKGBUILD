@@ -1,0 +1,53 @@
+# This so that our perfetto builds always happen in lockstep
+source ../perfetto/perfetto_common.pkgbuild
+
+pkgname=perfetto-android
+pkgdesc="System profiling, app tracing and trace analysis for Android"
+arch=(aarch64)
+url="https://perfetto.dev/"
+license=('apache')
+depends=('gcc-libs')
+makedepends=(
+    'git'
+    'ninja'
+    'gcc'
+    'python3'
+)
+source=(
+	"git+https://github.com/evlav/perfetto.git#commit=${_commit}"
+	"perfetto-android-tracefs-debugfs.conf"
+)
+sha256sums=('SKIP'
+            'c3e32d43756c613f3886884c1e57ab90aed8fef629aeecaea2fb5750643f6c51')
+options=(
+    '!debug'
+    '!strip'
+)
+TARGETS=(
+    tracebox
+)
+
+build() {
+    cd perfetto
+
+    BUILD_DEPS_ARGS=( --android )
+    GN_ARGS=(
+        'is_debug=false'
+        'target_os="android"'
+        'target_cpu="arm64"'
+        'enable_perfetto_trace_processor=true'
+        'enable_perfetto_traced_probes=true'
+        'perfetto_traced_probes_lepton=true'
+    )
+
+    tools/install-build-deps "${BUILD_DEPS_ARGS[@]}"
+    tools/gn gen --args="${GN_ARGS[*]}" out/android-${CARCH}
+    tools/ninja -C out/android-${CARCH} "${TARGETS[@]}"
+}
+
+package() {
+    for f in "${TARGETS[@]}"; do
+        install -TDm755 "perfetto/out/android-${CARCH}/${f}" "$pkgdir/usr/share/guestos/android/perfetto/$(basename "${f}")"
+    done
+    install -v -Dm644 "$srcdir"/perfetto-android-tracefs-debugfs.conf "$pkgdir"/usr/lib/tmpfiles.d/perfetto-android-tracefs-debugfs.conf ; \
+}
