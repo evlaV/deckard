@@ -2,9 +2,9 @@
 
 pkgname=steamdeck-kde-presets
 _srctag=3.8.3
-_commit=e72445a023209c4e74a1c028ee77ec8e21505a53
+_commit=de62b80d26760612ad1738bf2e0a4485c81ab2ab
 pkgver=${_srctag#jupiter-}
-pkgrel=9
+pkgrel=10
 arch=('any')
 url=""
 pkgdesc="Steamdeck KDE Presets"
