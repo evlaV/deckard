@@ -1,0 +1,19 @@
+[Unit]
+Description=perfetto traced_probes producer
+
+# Require traced, and stop us if it stops
+Requires=perfetto-traced.service
+PartOf=perfetto-traced.service
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/usr/bin/tracebox traced_probes
+
+[Install]
+WantedBy=multi-user.target
+Also=perfetto-traced.service
+Also=perfetto-traced-probes.service
+Also=perfetto-traced-perf.service
+Also=perfetto-pps-producer.service
+Also=perfetto-websocket-bridge.service

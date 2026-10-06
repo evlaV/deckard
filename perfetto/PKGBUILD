@@ -1,0 +1,84 @@
+# This so that our perfetto builds always happen in lockstep
+source ../perfetto/perfetto_common.pkgbuild
+
+pkgname=perfetto
+pkgdesc="System profiling, app tracing and trace analysis"
+arch=(aarch64 x86_64)
+url="https://perfetto.dev/"
+license=('apache')
+depends=('gcc-libs')
+makedepends=(
+  'git'
+  'ninja'
+  'gcc'
+  'python3'
+)
+
+# Disable stripping for cross-compilation because makepkg always uses `strip` and we can't
+# tell it to use `aarhc64-linux-gnu-strip` easily.
+options=(
+  '!debug'
+  '!strip'
+)
+
+SYSTEMD_SCRIPTS=(
+	'perfetto-pps-producer.service'
+	'perfetto-traced-perf.service'
+	'perfetto-traced-probes.service'
+	'perfetto-traced.service'
+	'perfetto-websocket-bridge.service'
+)
+install=perfetto.install
+source=(
+	"git+https://github.com/evlav/perfetto.git#commit=${_commit}"
+	"${SYSTEMD_SCRIPTS[@]}"
+)
+sha256sums=('SKIP'
+            '540910d562477aee3e89f26fa1a056c599267f4fe512c2aa6b0f19a3a1efc2b2'
+            '125e56562b27769dc4cc7e4d90df481fe78db62c0977000899993d3069863942'
+            '36bf4d48e301abc454a0a55ac0fcfdd067887cec27e2a1413afe5c4f2bce010c'
+            'f0d39a6c6e16bc61d644d622f899fcaeeec97c703620572e0576ed23982b51fd'
+            '69bfe461ec02fe163e6195c58da151659277d8f61e4ba5e3c4af3a9f6a230b08')
+
+TARGETS=(
+  perfetto
+  tracebox
+  traceconv
+  traced
+  traced_perf
+  traced_probes
+  traced_relay
+  websocket_bridge
+)
+
+build() {
+	cd perfetto
+
+	BUILD_DEPS_ARGS=()
+	GN_ARGS=( 'is_debug=false' )
+
+	# If building for aarch64, we're cross-building:
+	if [[ "${CARCH}" == "aarch64" ]]; then
+		BUILD_DEPS_ARGS+=( --linux-arm )
+		GN_ARGS+=( 'target_os="linux"' 'target_cpu="arm64"')
+	fi
+
+	tools/install-build-deps "${BUILD_DEPS_ARGS[@]}"
+	tools/gn gen --args="${GN_ARGS[*]}" out/linux-${CARCH}
+	tools/ninja -C out/linux-${CARCH} "${TARGETS[@]}"
+	tools/gen_amalgamated --output sdk/perfetto
+}
+
+package() {
+  for f in "${TARGETS[@]}"; do
+		install -TDm755 "perfetto/out/linux-${CARCH}/${f}" "$pkgdir/usr/bin/$(basename "${f}")"
+	done
+
+	# Install the systemd service and enable it
+	mkdir -p "${pkgdir}/usr/lib/systemd/system/multi-user.target.wants"
+	for SCRIPT in "${SYSTEMD_SCRIPTS[@]}"; do
+		install -TDm644 "${SCRIPT}" "${pkgdir}/usr/lib/systemd/system/${SCRIPT}"
+
+		ln -s "../${SCRIPT}" "${pkgdir}/usr/lib/systemd/system/multi-user.target.wants/${SCRIPT}"
+	done
+}
