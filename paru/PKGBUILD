@@ -10,7 +10,7 @@
 
 pkgname=paru
 pkgver=2.1.0.r67.g9ac3578
-pkgrel=3
+pkgrel=1
 _commit=9ac3578807a87858651e81a02586ceb947686e7c
 arch=('i686' 'pentium4' 'x86_64' 'arm' 'armv7h' 'armv6h' 'aarch64')
 pkgdesc='Feature packed AUR helper'
