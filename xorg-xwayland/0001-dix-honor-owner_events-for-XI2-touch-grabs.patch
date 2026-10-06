@@ -1,0 +1,271 @@
+From ac43bd532edea5357ca91550a0638ddd36f38159 Mon Sep 17 00:00:00 2001
+From: Matthew Schwartz <matthew.schwartz@linux.dev>
+Date: Mon, 14 Sep 2026 17:00:08 -0700
+Subject: [PATCH] dix: honor owner_events for XI2 touch grabs
+
+Touches under an XI2 touch grab are always reported relative to the
+grab window. TouchAddGrabListener has carried a FIXME for owner_events
+since touch support landed. GTK4 grabs with owner_events for autohide
+popovers and dismisses them when a press lands on another of its
+surfaces, so a touch outside a popover never closes it.
+
+With owner_events, report the touch relative to the grabbing client's
+own touch selection if that selection would have received it without
+the grab, otherwise relative to the grab window as before. Resolve the
+window once when the listener is added and cache it in the listener,
+since the sprite trace may be truncated mid-touch. Ungrabbing while
+such a touch is active accepts it instead of rejecting it, since the
+client already received the sequence as it would have without the grab
+and a replay to its selection would only repeat it.
+
+Signed-off-by: Matthew Schwartz <matthew.schwartz@linux.dev>
+---
+ Xi/exevents.c      | 30 ++++++++++++++++++----
+ dix/events.c       | 32 ++++++++++++++++++++++-
+ dix/touch.c        | 64 ++++++++++++++++++++++++++++++++++++++++++++--
+ include/inputstr.h |  4 ++-
+ 4 files changed, 121 insertions(+), 9 deletions(-)
+
+diff --git a/Xi/exevents.c b/Xi/exevents.c
+index 1991399ce..449eb2af8 100644
+--- a/Xi/exevents.c
++++ b/Xi/exevents.c
+@@ -1078,8 +1078,6 @@ DeliverOneTouchEvent(ClientPtr client, DeviceIntPtr dev, TouchPointInfoPtr ti,
+     Mask filter;
+     Window child = DeepestSpriteWin(&ti->sprite)->drawable.id;
+ 
+-    /* FIXME: owner event handling */
+-
+     /* If the client does not have the ownership mask set and is not
+      * the current owner of the touch, only pretend we delivered */
+     if (!grab && ti->num_grabs != 0 &&
+@@ -1368,8 +1366,13 @@ RetrieveTouchDeliveryData(DeviceIntPtr dev, TouchPointInfoPtr ti,
+         BUG_RETURN_VAL(!*grab, FALSE);
+ 
+         *client = rClient(*grab);
+-        *win = (*grab)->window;
+         *mask = (*grab)->xi2mask;
++
++        /* owner_events, see TouchAddGrabListener */
++        if (listener->owner_events_win)
++            *win = listener->owner_events_win;
++        else
++            *win = (*grab)->window;
+     }
+     else {
+         rc = dixLookupResourceByType((void **) win, listener->listener,
+@@ -2890,8 +2893,9 @@ WindowGone(WindowPtr win)
+             continue;
+ 
+         for (i = 0; i < t->num_touches; i++) {
+-            SpritePtr sprite = &t->touches[i].sprite;
+-            int j;
++            TouchPointInfoPtr ti = &t->touches[i];
++            SpritePtr sprite = &ti->sprite;
++            int j, k;
+ 
+             for (j = 0; j < sprite->spriteTraceGood; j++) {
+                 if (sprite->spriteTrace[j] == win) {
+@@ -2899,6 +2903,22 @@ WindowGone(WindowPtr win)
+                     break;
+                 }
+             }
++
++            /* An owner_events grab reporting on a window that left the
++             * trace falls back to the grab window. */
++            for (j = 0; j < ti->num_listeners; j++) {
++                TouchListener *listener = &ti->listeners[j];
++
++                if (!listener->owner_events_win)
++                    continue;
++
++                for (k = 0; k < sprite->spriteTraceGood; k++)
++                    if (sprite->spriteTrace[k] == listener->owner_events_win)
++                        break;
++
++                if (k == sprite->spriteTraceGood)
++                    listener->owner_events_win = NULL;
++            }
+         }
+     }
+ }
+diff --git a/dix/events.c b/dix/events.c
+index d21e1894c..479683d65 100644
+--- a/dix/events.c
++++ b/dix/events.c
+@@ -1510,6 +1510,18 @@ CurrentOrOldMasterKeyboard(DeviceIntPtr dev)
+     return NULL;
+ }
+ 
++static Bool
++TouchSpriteTraceHasWindow(SpritePtr sprite, WindowPtr win)
++{
++    int i;
++
++    for (i = 0; i < sprite->spriteTraceGood; i++)
++        if (sprite->spriteTrace[i] == win)
++            return TRUE;
++
++    return FALSE;
++}
++
+ /**
+  * Update touch records when an explicit grab is activated. Any touches owned by
+  * the grabbing client are updated so the listener state reflects the new grab.
+@@ -1529,6 +1541,12 @@ UpdateTouchesForGrab(DeviceIntPtr mouse)
+ 
+         if (ti->active &&
+             CLIENT_BITS(listener->listener) == grab->resource) {
++            WindowPtr prev_window = listener->window;
++            Bool was_selection = listener->type == TOUCH_LISTENER_REGULAR &&
++                                 listener->level == XI2 &&
++                                 TouchSpriteTraceHasWindow(&ti->sprite,
++                                                           prev_window);
++
+             if (grab->grabtype == CORE || grab->grabtype == XI ||
+                 !xi2mask_isset(grab->xi2mask, mouse, XI_TouchBegin)) {
+                 /*  Note that the grab will override any current listeners and if these listeners
+@@ -1548,6 +1566,13 @@ UpdateTouchesForGrab(DeviceIntPtr mouse)
+             listener->window = grab->window;
+             listener->state = TOUCH_LISTENER_IS_OWNER;
+ 
++            /* With owner_events, a touch this client received through its
++             * own selection keeps being reported on that window. */
++            if (listener->type != TOUCH_LISTENER_GRAB || !grab->ownerEvents)
++                listener->owner_events_win = NULL;
++            else if (was_selection)
++                listener->owner_events_win = prev_window;
++
+             if (listener->grab)
+                 FreeGrab(listener->grab);
+             listener->grab = AllocGrab(grab);
+@@ -1674,10 +1699,15 @@ DeactivatePointerGrab(DeviceIntPtr mouse)
+         TouchPointInfoPtr ti = mouse->touch->touches + i;
+         if (ti->active && TouchResourceIsOwner(ti, grab_resource)) {
+             int mode = XIRejectTouch;
++            /* An owner_events grab reporting on the client's own selection
++             * already delivered the touch as it would have been without the
++             * grab, so keep the sequence rather than replay it. */
++            if (ti->listeners[0].owner_events_win)
++                mode = XIAcceptTouch;
+             /* Rejecting will generate a TouchEnd, but we must not
+                emulate a ButtonRelease here. So pretend the listener
+                already has the end event */
+-            if (grab->grabtype == CORE || grab->grabtype == XI ||
++            else if (grab->grabtype == CORE || grab->grabtype == XI ||
+                     !xi2mask_isset(grab->xi2mask, mouse, XI_TouchBegin)) {
+                 mode = XIAcceptTouch;
+                 /* NOTE: we set the state here, but
+diff --git a/dix/touch.c b/dix/touch.c
+index 44e615e0a..d9163f4f6 100644
+--- a/dix/touch.c
++++ b/dix/touch.c
+@@ -652,6 +652,7 @@ TouchAddListener(TouchPointInfoPtr ti, XID resource, int resource_type,
+     ti->listeners[ti->num_listeners].state = state;
+     ti->listeners[ti->num_listeners].type = type;
+     ti->listeners[ti->num_listeners].window = window;
++    ti->listeners[ti->num_listeners].owner_events_win = NULL;
+     ti->listeners[ti->num_listeners].grab = g;
+     if (grab)
+         ti->num_grabs++;
+@@ -693,14 +694,66 @@ TouchRemoveListener(TouchPointInfoPtr ti, XID resource)
+     return FALSE;
+ }
+ 
++/**
++ * Find the window an XI2 touch grab with owner_events reports the touch
++ * relative to. As for pointer grabs, a touch the grabbing client would have
++ * received through its own selection is reported normally, i.e. relative to
++ * the selection window. The search mirrors TouchAddRegularListener, so a
++ * selection by another client or a pointer emulation listener that would
++ * have won without the grab keeps the grab window. Delivery uses the grab's
++ * event mask either way, so a sequence is never split across windows.
++ *
++ * @param dev The device the touch is on.
++ * @param ti The touch point to find the window for.
++ * @param grab An XI2 grab selecting XI_TouchBegin with owner_events set.
++ * @return The window the touch is reported relative to, or NULL for the grab
++ *         window.
++ */
++static WindowPtr
++TouchGrabOwnerEventsWindow(DeviceIntPtr dev, TouchPointInfoPtr ti, GrabPtr grab)
++{
++    SpritePtr sprite = &ti->sprite;
++    int i;
++
++    for (i = sprite->spriteTraceGood - 1; i >= 0; i--) {
++        WindowPtr win = sprite->spriteTrace[i];
++        OtherInputMasks *inputMasks;
++        InputClients *iclients;
++
++        /* Touch events have no XI1 or core type, so this is the XI2 mask
++         * alone and cannot carry the DontPropagate bit */
++        if (!EventIsDeliverable(dev, ET_TouchBegin, win)) {
++            /* A DontPropagate barrier is not a listener */
++            if (ti->emulate_pointer &&
++                (EventIsDeliverable(dev, ET_ButtonPress, win) &
++                 ~EVENT_DONT_PROPAGATE_MASK))
++                return NULL;
++            continue;
++        }
++
++        inputMasks = wOtherInputMasks(win);
++        BUG_RETURN_VAL(!inputMasks, NULL);
++
++        /* Only one client may select touch events on a window */
++        nt_list_for_each_entry(iclients, inputMasks->inputClients, next) {
++            if (!xi2mask_isset(iclients->xi2mask, dev, XI_TouchBegin))
++                continue;
++
++            return rClient(iclients) == rClient(grab) ? win : NULL;
++        }
++
++        return NULL;
++    }
++
++    return NULL;
++}
++
+ static void
+ TouchAddGrabListener(DeviceIntPtr dev, TouchPointInfoPtr ti,
+                      InternalEvent *ev, GrabPtr grab)
+ {
+     enum TouchListenerType type = TOUCH_LISTENER_GRAB;
+ 
+-    /* FIXME: owner_events */
+-
+     if (grab->grabtype == XI2) {
+         if (!xi2mask_isset(grab->xi2mask, dev, XI_TouchOwnership))
+             TouchEventHistoryAllocate(ti);
+@@ -715,6 +768,13 @@ TouchAddGrabListener(DeviceIntPtr dev, TouchPointInfoPtr ti,
+     /* grab listeners are always RT_NONE since we keep the grab pointer */
+     TouchAddListener(ti, grab->resource, RT_NONE, grab->grabtype,
+                      type, TOUCH_LISTENER_AWAITING_BEGIN, grab->window, grab);
++
++    /* Pointer grabs handle owner_events in DeliverTouchEmulatedEvent. The
++     * sprite trace may be truncated by WindowGone mid-touch, so the window
++     * is resolved here and cached. */
++    if (type == TOUCH_LISTENER_GRAB && grab->ownerEvents)
++        ti->listeners[ti->num_listeners - 1].owner_events_win =
++            TouchGrabOwnerEventsWindow(dev, ti, grab);
+ }
+ 
+ /**
+diff --git a/include/inputstr.h b/include/inputstr.h
+index 24dd48841..825df9358 100644
+--- a/include/inputstr.h
++++ b/include/inputstr.h
+@@ -309,7 +309,9 @@ typedef struct _TouchListener {
+     enum TouchListenerType type;
+     enum TouchListenerState state;
+     enum InputLevel level;  /* matters only for emulating touches */
+-    WindowPtr window;
++    WindowPtr window;       /* grab window or selection window */
++    WindowPtr owner_events_win; /* window an owner_events touch grab reports
++                                 * the touch on instead of window, or NULL */
+     GrabPtr grab;
+ } TouchListener;
+ 
+-- 
+2.55.0
+
