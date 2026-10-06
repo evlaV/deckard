@@ -8,7 +8,7 @@
 # Holo: split PKGBUILD to share sources with android build.
 
 pkgver=19.1.7
-pkgrel=4
+pkgrel=2
 pkgdesc="Next generation, high-performance debugger"
 arch=('x86_64' 'aarch64')
 url="https://lldb.llvm.org/"
