@@ -2,7 +2,7 @@
 
 pkgname=holo-glibc-locales
 pkgver=2.43+r5+g856c426a7534
-pkgrel=3
+pkgrel=1
 pkgdesc="Substitute of glibc-locales with only the locales present in SteamOS"
 arch=('x86_64')
 license=(GPL LGPL)
