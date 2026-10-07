@@ -6,7 +6,7 @@
 pkgname=rtkit
 _commit=cc4295e8be390282b3947807fbc2b16680b07e99
 pkgver=0.14
-pkgrel=5
+pkgrel=3
 pkgdesc="Realtime Policy and Watchdog Daemon"
 url="https://gitlab.freedesktop.org/pipewire/rtkit"
 arch=(x86_64)
