@@ -2,7 +2,7 @@
 
 pkgname=steamos-atomupd-client
 pkgver=0.20260331.1
-pkgrel=4
+pkgrel=2
 pkgdesc='SteamOS Atomic Update (client) - Atomic update client for SteamOS.'
 arch=('any')
 url='https://store.steampowered.com/steamos/'

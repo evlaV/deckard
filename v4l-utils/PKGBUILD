@@ -2,7 +2,7 @@
 pkgname=v4l-utils
 _commit=95ad25f6a77a0a6650f5f657ac2c5046efcd04a0
 pkgver=1.33.0
-pkgrel=1.3
+pkgrel=1.1
 pkgdesc="Userspace tools and conversion library for Video 4 Linux"
 arch=('x86_64' 'aarch64')
 url="https://linuxtv.org/"

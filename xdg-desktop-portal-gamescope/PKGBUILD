@@ -7,7 +7,7 @@
 pkgname=xdg-desktop-portal-gamescope
 _commit=bfbf0e3aa2082d2b38bb87de7d0b2f077f98d8d8
 pkgver=0.1.23.bfbf0e3
-pkgrel=1.3
+pkgrel=1.1
 pkgdesc='A backend implementation for xdg-desktop-portal talking to gamescope'
 url='https://github.com/evlav/xdg-desktop-portal-gamescope'
 arch=('x86_64')
