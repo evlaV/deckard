@@ -1,0 +1,24 @@
+# Maintainer: Elliot Saba <sabae@valvesoftware.com>
+
+pkgname=deckard-audio-config
+_srctag=20261007.1
+pkgver=${_srctag//-/.}
+pkgrel=1
+arch=('any')
+license=('MIT')
+pkgdesc="Deckard audio configuration files"
+url='https://github.com/evlav/deckard-audio-config/-/tree/$_srctag'
+depends=(
+    # We customize pipewire and wireplumber
+    'pipewire'
+    'wireplumber'
+)
+makedepends=('git' 'rsync' 'openssh')
+source=(
+    "git+https://github.com/evlav/deckard-audio-config.git#tag=$_srctag"
+)
+sha256sums=('c78ec73fb1f28363539832d34458385117991758ea9b624c665c3195a6766fc0')
+
+package() {
+   rsync -a --exclude 'README.md' --exclude 'src' "$srcdir/${pkgname}/"* "$pkgdir"
+}
