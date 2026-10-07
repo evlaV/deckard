@@ -3,7 +3,7 @@
 pkgname=steamos-log-submitter
 _commit=50d60e44a4a5673369f6fa0a34de420eb09a9bc2
 pkgver=0.8.3+g${_commit:0:12}
-pkgrel=4
+pkgrel=2
 pkgdesc="SteamOS Log Submitter"
 url="https://github.com/evlav/steamos-log-submitter"
 arch=('any')

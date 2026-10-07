@@ -3,7 +3,7 @@
 
 pkgname=rauc
 pkgver=1.14
-pkgrel=1.4
+pkgrel=1.2
 pkgdesc="Safe and secure software updates for embedded Linux"
 arch=(x86_64)
 url="https://rauc.io"

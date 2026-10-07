@@ -1,7 +1,7 @@
 pkgname=steamos-devkit-service
 pkgdesc="SteamOS Devkit Service"
 pkgver=0.20250916.0
-pkgrel=5
+pkgrel=3
 arch=('any')
 url="https://github.com/evlav/steamos-devkit-service"
 license=('LGPL-2.1+')
