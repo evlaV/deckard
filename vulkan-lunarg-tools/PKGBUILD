@@ -1,0 +1,85 @@
+# Maintainer: Jan Alexander Steffens (heftig) <heftig@archlinux.org>
+# Maintainer: Laurent Carlier <lordheavym@gmail.com>
+
+source ../vulkan-headers/vulkan_common.pkgbuild
+pkgbase=vulkan-lunarg-tools
+pkgname=(
+  vulkan-extra-tools
+  vulkan-extra-layers
+)
+pkgver="${_pkgver}"
+pkgrel="${_pkgrel}"
+pkgdesc="LunarG's Vulkan tools and utilities"
+url="https://www.lunarg.com/"
+arch=(x86_64 aarch64)
+license=(Apache-2.0)
+depends=(
+  gcc-libs
+  glibc
+  vulkan-icd-loader
+)
+makedepends=(
+  cmake
+  git
+  jsoncpp
+  ninja
+  python
+  qt5-base
+  valijson
+  vulkan-headers
+  vulkan-utility-libraries
+)
+groups=(vulkan-devel)
+source=(
+  "LunarG-VulkanTools::${_lunarg_vulkan_tools_url}"
+)
+b2sums=('d39167750d35cb60a19f84edd274e12846b14f5cb635266c76de67a48e3ca2278d807f9c9db52c5ebbad38d5ea75ccf3ee8878e307c2f2c85f948f031fb35778')
+
+build() {
+  local cmake_options=(
+    -D CMAKE_BUILD_TYPE=Release
+    -D CMAKE_INSTALL_PREFIX=/usr
+    -D CMAKE_INSTALL_SYSCONFDIR=/etc
+    -D CMAKE_SKIP_INSTALL_RPATH=ON
+  )
+
+  cmake -S LunarG-VulkanTools -B build -G Ninja "${cmake_options[@]}"
+  cmake --build build
+}
+
+_pick() {
+  local p="$1" f d; shift
+  for f; do
+    d="$srcdir/$p/${f#$pkgdir/}"
+    mkdir -p "$(dirname "$d")"
+    mv "$f" "$d"
+    rmdir -p --ignore-fail-on-non-empty "$(dirname "$f")"
+  done
+}
+
+package_vulkan-extra-tools() {
+  pkgdesc="Vulkan Configurator and Installation Analyzer"
+  depends+=(
+    jsoncpp
+    qt5-base
+  )
+
+  DESTDIR="$pkgdir" cmake --install build
+
+  _pick layers "$pkgdir"/usr/lib/libVkLayer*
+  _pick layers "$pkgdir"/usr/share/vulkan/explicit_layer.d
+
+  install -Dm644 LunarG-VulkanTools/vkconfig_gui/*.md \
+    -t "$pkgdir/usr/share/doc/$pkgname"
+}
+
+package_vulkan-extra-layers() {
+  pkgdesc="Extra layers for Vulkan development"
+
+  mv layers/* "$pkgdir"
+
+  install -Dm644 LunarG-VulkanTools/layersvt/*.md \
+    -t "$pkgdir/usr/share/doc/$pkgname"
+}
+
+# vim:set sw=2 sts=-1 et:
