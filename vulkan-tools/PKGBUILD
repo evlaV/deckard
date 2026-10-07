@@ -1,0 +1,77 @@
+# Maintainer: Laurent Carlier <lordheavym@gmail.com>
+
+source ../vulkan-headers/vulkan_common.pkgbuild
+pkgname=vulkan-tools
+pkgver="${_pkgver}"
+pkgrel="${_pkgrel}"
+arch=(x86_64 aarch64)
+url="https://www.khronos.org/vulkan/"
+pkgdesc="Vulkan Utilities and Tools"
+license=('custom')
+depends=('libx11' 'wayland')
+makedepends=('cmake' 'python' 'wayland-protocols' 'vulkan-headers' 'glslang' 'spirv-tools')
+makedepends+=('libx11' 'libxrandr' 'ninja' 'git') # for update_deps.py -- volk dependency
+groups=('vulkan-devel')
+source=(
+  "${_vulkan_tools_url}"
+  "./backport-remove-pkgconfig-library-names.patch"
+)
+sha256sums=('838dee15208410659a16125a8a2b80c3e18b1eaf6056b7220e8962e61dad9940'
+            '4879665bce3766a60e18ea8cfd884f3d922d474f2eb26df8ff1f0e9315e42062')
+
+prepare() {
+  cd "${srcdir}"/Vulkan-Tools
+  patch -p1 <"${srcdir}/backport-remove-pkgconfig-library-names.patch"
+
+  rm -rf build{,-wayland} && mkdir build{,-wayland}
+}
+
+build() {
+  cd "${srcdir}"/Vulkan-Tools/build
+
+  ../scripts/update_deps.py --config release --generator Ninja
+  cmake -C helper.cmake \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_INSTALL_SYSCONFDIR=/etc \
+    -DCMAKE_INSTALL_DATADIR=/usr/share \
+    -DCMAKE_SKIP_RPATH=True \
+    -DBUILD_WSI_XCB_SUPPORT=On \
+    -DBUILD_WSI_XLIB_SUPPORT=On \
+    -DBUILD_WSI_WAYLAND_SUPPORT=On \
+    -DBUILD_CUBE=ON \
+    -DBUILD_VULKANINFO=ON \
+    -DBUILD_ICD=OFF \
+    -DCMAKE_BUILD_TYPE=Release \
+    ..
+  make
+
+  cd "${srcdir}"/Vulkan-Tools/build-wayland
+
+  ../scripts/update_deps.py --config release --generator Ninja
+  cmake -C helper.cmake \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_INSTALL_SYSCONFDIR=/etc \
+    -DCMAKE_INSTALL_DATADIR=/usr/share \
+    -DCMAKE_SKIP_RPATH=True \
+    -DBUILD_WSI_XCB_SUPPORT=OFF \
+    -DBUILD_WSI_XLIB_SUPPORT=OFF \
+    -DBUILD_WSI_WAYLAND_SUPPORT=On \
+    -DBUILD_CUBE=ON \
+    -DCUBE_WSI_SELECTION=WAYLAND \
+    -DBUILD_VULKANINFO=OFF \
+    -DBUILD_ICD=OFF \
+    -DCMAKE_BUILD_TYPE=Release \
+    ..
+  make
+}
+
+package() {
+  cd "${srcdir}"/Vulkan-Tools*/build
+  
+  make DESTDIR="${pkgdir}" install
+
+  install -m755 ../build-wayland/cube/vkcube "${pkgdir}"/usr/bin/vkcube-wayland
+
+  install -dm755 "${pkgdir}"/usr/share/licenses/${pkgname}
+  install -m644 ../LICENSE.txt "${pkgdir}"/usr/share/licenses/${pkgname}/
+}
