@@ -3,7 +3,7 @@
 pkgname=steamos-powerbuttond
 _commit=4403691ccffdbb85a9a0de6d9348b3d777d078d7
 pkgver=3.2+git${_commit:0:8}
-pkgrel=5
+pkgrel=3
 arch=('aarch64' 'x86_64')
 url="https://github.com/evlav/deckard-powerbuttond"
 pkgdesc="Power button daemon for SteamOS"
