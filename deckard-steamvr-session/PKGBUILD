@@ -1,6 +1,6 @@
 pkgname=deckard-steamvr-session
 pkgver=1.7.0
-pkgrel=4
+pkgrel=2
 pkgdesc="SteamVR session manager for deckard"
 arch=('aarch64')
 url="https://store.steampowered.com/app/250820/SteamVR/"
