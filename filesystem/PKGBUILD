@@ -4,7 +4,7 @@
 pkgname=filesystem
 pkgver=2021.12.07
 # https://bugs.archlinux.org/task/72284
-pkgrel=1.26
+pkgrel=1.27
 pkgdesc='Base SteamOS Linux files'
 arch=('x86_64')
 license=('GPL')
