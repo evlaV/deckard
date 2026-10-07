@@ -15,7 +15,7 @@
 pkgname=(gcc gcc-libs gcc-ada gcc-d gcc-fortran gcc-go gcc-m2 gcc-objc lto-dump libgccjit)
 pkgver=15.1.1+r500+gb1b8d8ce3eea
 _commit=b1b8d8ce3eea34959a63400680ce4bf783a1d337
-pkgrel=1.2
+pkgrel=1.3
 pkgdesc='The GNU Compiler Collection'
 arch=('x86_64' 'aarch64')
 license=(GPL-3.0-with-GCC-exception GFDL-1.3-or-later)
