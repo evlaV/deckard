@@ -3,7 +3,7 @@
 pkgname=linux-firmware-deckard
 _commit=df2d800f106db81a34beb4d927e1991fa965d784
 pkgver=20260801.1+git${_commit:0:8}
-pkgrel=1
+pkgrel=2
 pkgdesc="Firmware files for Linux"
 url="https://github.com/evlav/deckard-linux-firmware"
 license=('custom')
