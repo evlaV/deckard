@@ -12,12 +12,13 @@ depends=('libx11' 'wayland')
 makedepends=('cmake' 'python' 'wayland-protocols' 'vulkan-headers' 'glslang' 'spirv-tools')
 makedepends+=('libx11' 'libxrandr' 'ninja' 'git') # for update_deps.py -- volk dependency
 groups=('vulkan-devel')
-source=("${_vulkan_tools_url}")
+source=(
+  "${_vulkan_tools_url}"
+)
 sha256sums=('73e8ed8f1c67ebfced06ffdaeac54d8a184a10b26d0d7b12c339a70a3a4ea32b')
 
 prepare() {
   cd "${srcdir}"/Vulkan-Tools
-
   rm -rf build{,-wayland} && mkdir build{,-wayland}
 }
 
@@ -62,7 +63,7 @@ build() {
 
 package() {
   cd "${srcdir}"/Vulkan-Tools*/build
-  
+
   make DESTDIR="${pkgdir}" install
 
   install -m755 ../build-wayland/cube/vkcube "${pkgdir}"/usr/bin/vkcube-wayland
