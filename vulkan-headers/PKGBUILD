@@ -24,7 +24,7 @@ optdepends=(
 provides=("vulkan-hpp=$pkgver")
 groups=(vulkan-devel)
 source=("${_vulkan_headers_url}")
-b2sums=('d4703fab34991fd81e5c44c7ba5aa15aca30dacc6ddfec82972cda16e8598e0c8180d4612adca9063efc57b1f32c87f11c3e8f6e87df7b4785d055e0f441ea68')
+b2sums=('6eeccbfe5fef9d73d0c6df5294c2d6fc908fb8a9d5c380946a4c0a431ed3eed9639ab85de0ee6d45825a4037d3df5a0780d8deda8a52df984a1992d65232769c')
 
 build() {
   local cmake_options=(

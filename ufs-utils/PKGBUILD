@@ -2,7 +2,7 @@
 
 pkgname=ufs-utils
 pkgver=7.14.12
-pkgrel=1
+pkgrel=1.1
 pkgdesc="UFS utils"
 arch=('aarch64')
 url="https://github.com/SanDisk-Open-Source/ufs-utils"

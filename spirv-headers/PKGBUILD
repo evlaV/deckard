@@ -21,7 +21,7 @@ makedepends=(
 )
 groups=(vulkan-devel)
 source=("${_spirv_headers_url}")
-b2sums=('26eb07e852617657f4aa5a3b0fc4843679fd9fdd3c8a330b13c814ba078ac7d21dd7cf210632d5bf5e6203a8f08aac5c53ccbcb1457b5b3a0a010a4fc3cdf3ce')
+b2sums=('f34ee9e4c663fe9b70a23991e7626a54b9066fc23659bfdc806e0747ba413b8b880bcc65c86a3fddff440b41f90b9cb0fb7734cb82a2673b5d56a2ac3ff157e6')
 
 build() {
   local cmake_options=(

@@ -2,7 +2,7 @@
 
 pkgname=deckard-mesa-linux-deps-x86_64
 pkgver=20260820
-pkgrel=1
+pkgrel=2
 arch=('x86_64')
 license=('Various')
 pkgdesc="Bundle of dependencies needed for FEX mesa rootfs shard"
