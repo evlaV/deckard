@@ -6,7 +6,7 @@
 pkgname=scx-scheds
 gitname=scx
 pkgver=1.1.2.linux.steamos.3
-pkgrel=1
+pkgrel=4
 pkgdesc="sched_ext schedulers"
 arch=('x86_64' 'aarch64')
 url="https://github.com/evlav/scx/-/tree/v$pkgver"
@@ -14,7 +14,7 @@ license=('GPL-2.0-only')
 #scx_lavd depends upon bpf so likely will need to be rebuilt anytime we upgrade the kernel
 #for example in the switch from 6.18 -> 7.2 kernel that was required
 depends=('libelf' 'zlib' 'jq' 'bpf')
-makedepends=('git' 'openssh' 'python' 'clang' 'llvm' 'llvm-libs' 'rustup' 'upx')
+makedepends=('git' 'openssh' 'python' 'clang' 'llvm' 'llvm-libs' 'rust' 'cargo' 'upx')
 backup=('etc/default/scx' 'etc/systemd/journald@sched-ext.conf')
 source=("git+https://github.com/evlav/scx.git#tag=v$pkgver")
 sha256sums=('fe5332de5777b3a3185dcfed4cbc55b9459cfd5614bfa9bbbaf732a993cf457a')
@@ -58,12 +58,7 @@ prepare() {
 
 build() {
   cd $gitname
-
-  # Work around broken rustc on aarch64
-  rustup toolchain install stable
-
   cargo build --profile release-tiny  -p scx_lavd
-
   # Disable upx (the binary compressor) for now since it is broken with makepkg
   # upx --best --lzma  target/release-tiny/scx_lavd
 }
