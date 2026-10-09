@@ -1,0 +1,77 @@
+From 097a29a17471ae4ef3c52fd66dad8ce037586109 Mon Sep 17 00:00:00 2001
+From: Gabe Rowe <gaber@valvesoftware.com>
+Date: Fri, 27 Mar 2026 15:48:32 -0700
+Subject: [PATCH 1/1] libv4l2tracer: handle reentrant close() call problems
+ that were hanging with streaming_client
+
+---
+ utils/v4l2-tracer/libv4l2tracer.cpp | 43 ++++++++++++++++++++++++-----
+ 1 file changed, 36 insertions(+), 7 deletions(-)
+
+diff --git a/utils/v4l2-tracer/libv4l2tracer.cpp b/utils/v4l2-tracer/libv4l2tracer.cpp
+index f8606a76..2fd928ec 100644
+--- a/utils/v4l2-tracer/libv4l2tracer.cpp
++++ b/utils/v4l2-tracer/libv4l2tracer.cpp
+@@ -141,14 +141,33 @@ int open64(const char *path, int oflag, ...)
+ 
+ int close(int fd)
+ {
+-	errno = 0;
+-	int (*original_close)(int fd) = nullptr;
+-	original_close = (int (*)(int)) dlsym(RTLD_NEXT, "close");
++	static int (*real_close)(int) = NULL;
++	static __thread int in_close;
++	std::string path;
+ 
+-	if (getenv("V4L2_TRACER_PAUSE_TRACE") != nullptr)
+-		return (*original_close)(fd);
++	{
++		//handle case where we get called multiple times
++		if (in_close) {
++			errno = EIO;
++			return -1;
++		}
++
++		in_close = 1;
++
++		if (!real_close) real_close = (int (*)(int))dlsym(RTLD_NEXT, "close");
++
++		if (!real_close) {
++			in_close = 0;
++			errno = EIO;
++			return -1;
++		}
+ 
+-	std::string path = get_device(fd);
++		if (getenv("V4L2_TRACER_PAUSE_TRACE") != nullptr)
++			goto exit;
++	}
++
++	/////////////////////
++	path = get_device(fd);
+ 	debug_line_info("\n\tfd: %d, path: %s", fd, path.c_str());
+ 
+ 	/* Only trace the close if a corresponding open was also traced. */
+@@ -165,8 +184,18 @@ int close(int fd)
+ 			close_json_file();
+ 	}
+ 	print_devices();
++	/////////////////////
++
++exit:
++	{
++		int saved_errno;
++		int ret = real_close(fd);
++		saved_errno = errno;
+ 
+-	return (*original_close)(fd);
++		in_close = 0;
++		errno = saved_errno;
++		return ret;
++	}
+ }
+ 
+ void *mmap(void *addr, size_t len, int prot, int flags, int fildes, off_t off)
+-- 
+2.53.0
+
