@@ -3,7 +3,7 @@
 pkgname=deckard-audio-config
 _srctag=20261007.1
 pkgver=${_srctag//-/.}
-pkgrel=1
+pkgrel=3
 arch=('any')
 license=('MIT')
 pkgdesc="Deckard audio configuration files"
