@@ -1,0 +1,91 @@
+# Maintainer: Laurent Carlier <lordheavym@gmail.com>
+# Contributor: Luca Bennati <lucak3 AT gmail DOT com>
+# Contributor: Glaucous <glakke1 at gmail dot com>
+
+pkgname=apitrace
+pkgver=14.1
+pkgrel=3
+pkgdesc="Graphics API Tracing"
+arch=('x86_64' 'aarch64')
+url="https://github.com/apitrace/apitrace"
+license=('MIT')
+depends=(
+  'brotli'
+  'gcc-libs'
+  'glibc'
+  'python'
+  'python-numpy'
+  'python-pillow'
+  'libpng'
+  'libprocps'
+  'libx11'
+  'zlib'
+)
+makedepends=(
+  'cmake'
+  'git'
+  'mesa'
+  'qt5-base'
+)
+
+
+optdepends=('qt5-base: GUI support')
+source=("$pkgname::git+https://github.com/evlav/deckard-apitrace.git#commit=271b46ef040130dae7cade15c2bd66b69212bea3"
+        "git+https://github.com/apitrace/gltrim-tests.git#commit=12ceee7"
+        "git+https://github.com/google/brotli.git#commit=f0328d1"
+        "git+https://github.com/google/googletest.git#commit=7140cd41"
+        "git+https://github.com/ianlancetaylor/libbacktrace.git#commit=549b81b"
+        "git+https://github.com/apitrace/libpng.git#commit=7cecdcae0"
+        "git+https://github.com/google/snappy.git#commit=27ab5f7"
+        "git+https://github.com/madler/zlib.git#commit=e3dc0a85"
+        "git+https://github.com/microsoft/DirectXMath.git#commit=2d9944f")
+sha256sums=('6adf33202a96c40e782e09f73ca800e24a5f1c1c88382fd2e2217bf33b003d5b'
+            '2fe1127c6bf7cca6ccb256a13bc6189a3d8d63616dc4d31fd36f03a35ec995d4'
+            'd67bc2257c1ac4169c91a8b46c03615d99ae840982a804f88494df9ecb058c9a'
+            '9cf470e0820bb90aafff4a0ff8b172c57cbb0b4851507b3e4623b932305179d6'
+            '5b20521549a7236e693f50a69059a8de159b99f3451910d6b62d077cb3ad35dc'
+            'fd143519561f5e9cb7ad4c841163d509fca677b08ed2a792edf27b84ec490f3e'
+            'c80484cc70862e26d0f4464ff13d81e4fa402f3d04855f7f71b0ebba449d8c5d'
+            '2626f74e5305c9247e356028332a691698b557b17b3521a45de78973b6c554dc'
+            'a15fa65f9d434bea88d503b814293418d9cc1bde16583060e7caab659d53e681')
+
+prepare() {
+  cd $pkgname
+
+  git submodule init
+  git config submodule.frametrim/tests.url "$srcdir/gltrim-tests"
+  git config submodule.thirdparty/brotli.url "$srcdir/brotli"
+  git config submodule.thirdparty/gtest.url "$srcdir/googletest"
+  git config submodule.thirdparty/libbacktrace.url "$srcdir/libbacktrace"
+  git config submodule.thirdparty/libpng.url "$srcdir/libpng"
+  git config submodule.thirdparty/snappy.url "$srcdir/snappy"
+  git config submodule.thirdparty/zlib.url "$srcdir/zlib"
+  git config submodule.thirdparty/directxmath.url "$srcdir/DirectXMath"
+  git -c protocol.file.allow=always submodule update
+}
+
+build() {
+  local cmake_options=(
+    -B build
+    -D CMAKE_BUILD_TYPE=None
+    -D CMAKE_INSTALL_PREFIX=/usr
+    -D ENABLE_GUI=TRUE
+    -S $pkgname
+    -W no-dev
+  )
+  
+  cmake "${cmake_options[@]}"
+  cmake --build build --verbose
+}
+
+check() {
+  ctest --test-dir build --output-on-failure
+}
+
+package() {
+  DESTDIR="$pkgdir" cmake --install build
+  install -vDm 644 $pkgname/LICENSE -t "${pkgdir}/usr/share/licenses/apitrace/"
+  install -vd "${pkgdir}/usr/include/GLES"
+  cp -av "${pkgname}/thirdparty/khronos/GLES/." "${pkgdir}/usr/include/GLES/"
+}
+
