@@ -3,7 +3,7 @@
 pkgname=steamos-efi
 _srctag=20260122.2
 pkgver=${_srctag}
-pkgrel=1
+pkgrel=3
 arch=('x86_64' 'aarch64')
 url='https://github.com/evlav/deckard-steamos-efi'
 pkgdesc='Stage 1 bootloader for SteamOS 3+'
