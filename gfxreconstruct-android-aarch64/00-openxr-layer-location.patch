@@ -1,6 +1,6 @@
-commit 1cdb4acb46ac4d5fdf076f1fb1bc3b89ecff6ffb
+commit a442cf2ce972814b3a17d90d3f257794c3930c9e
 Author: Elliot Saba <sabae@valvesoftware.com>
-Date:   Tue Feb 17 19:44:59 2026 +0000
+Date:   Tue Oct 6 15:35:20 2026 -0700
 
     Install OpenXR layer's JSON manifest in correct path on Unix
     
@@ -10,15 +10,15 @@ Date:   Tue Feb 17 19:44:59 2026 +0000
     [0] https://registry.khronos.org/OpenXR/specs/1.1/loader.html#linux-manifest-search-paths
 
 diff --git a/layer/CMakeLists.txt b/layer/CMakeLists.txt
-index a5c7ea9fe..ea120572a 100644
+index 554caa42..9111a5d8 100644
 --- a/layer/CMakeLists.txt
 +++ b/layer/CMakeLists.txt
-@@ -149,7 +149,7 @@ install(TARGETS VkLayer_gfxreconstruct RUNTIME DESTINATION ${CMAKE_INSTALL_BINDI
- if (UNIX)
-     install(FILES $<TARGET_FILE_DIR:VkLayer_gfxreconstruct>/staging-json/VkLayer_gfxreconstruct.json DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/vulkan/explicit_layer.d)
-     if (OPENXR_SUPPORT_ENABLED)
--        install(FILES $<TARGET_FILE_DIR:VkLayer_gfxreconstruct>/staging-json/XrLayer_gfxreconstruct.json DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/openxr/1/api_layers/explicit_layer.d)
-+        install(FILES $<TARGET_FILE_DIR:VkLayer_gfxreconstruct>/staging-json/XrLayer_gfxreconstruct.json DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/openxr/1/api_layers/explicit.d)
-     endif()
- else()
-     install(FILES $<TARGET_FILE_DIR:VkLayer_gfxreconstruct>/VkLayer_gfxreconstruct.json DESTINATION ${CMAKE_INSTALL_BINDIR})
+@@ -153,7 +153,7 @@ if (GFXRECON_ENABLE_VULKAN)
+     if (UNIX)
+         install(FILES $<TARGET_FILE_DIR:VkLayer_gfxreconstruct>/staging-json/VkLayer_gfxreconstruct.json DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/vulkan/explicit_layer.d)
+         if (OPENXR_SUPPORT_ENABLED)
+-            install(FILES $<TARGET_FILE_DIR:VkLayer_gfxreconstruct>/staging-json/XrLayer_gfxreconstruct.json DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/openxr/1/api_layers/explicit_layer.d)
++            install(FILES $<TARGET_FILE_DIR:VkLayer_gfxreconstruct>/staging-json/XrLayer_gfxreconstruct.json DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/openxr/1/api_layers/explicit.d)
+         endif()
+     else()
+         install(FILES $<TARGET_FILE_DIR:VkLayer_gfxreconstruct>/VkLayer_gfxreconstruct.json DESTINATION ${CMAKE_INSTALL_BINDIR})

@@ -37,11 +37,11 @@ build() {
   export JAVA_HOME="$(compgen -G "/usr/lib/jvm/java-17-openjdk")"
 
   cd $srcdir/gfxreconstruct/android
-  
+
   ./gradlew assembleRelease
 }
 
 package() {
   mkdir -p "${pkgdir}/usr/share/guestos/android/vendor/vulkan_layers"
-  install -m755 "gfxreconstruct/android/layer/build/intermediates/cxx/RelWithDebInfo/325k2j3o/obj/arm64-v8a/libVkLayer_gfxreconstruct.so" "${pkgdir}/usr/share/guestos/android/vendor/vulkan_layers/"
+  install -m755 gfxreconstruct/android/layer/build/intermediates/cxx/RelWithDebInfo/*/obj/arm64-v8a/libVkLayer_gfxreconstruct.so "${pkgdir}/usr/share/guestos/android/vendor/vulkan_layers/"
 }
