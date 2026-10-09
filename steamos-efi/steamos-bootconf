@@ -1,0 +1,153 @@
+#!/bin/bash
+
+set -euo pipefail
+
+PARTLABEL_DIR="/dev/disk/by-partlabel"
+PARTSETS_DIR="/dev/disk/by-partsets"
+SLOT_NAMES=( A B )
+
+# Which slot are we currently booted into?
+function this_slot()
+{
+    local ROOT_DEV="$(realpath "$(findmnt --noheadings -o SOURCE /)" )"
+    for NAME in "${SLOT_NAMES[@]}"; do
+        if [[ "$(realpath "${PARTSETS_DIR}/${NAME}/rootfs")" == "${ROOT_DEV}" ]]; then
+            echo "${NAME}"
+        fi
+    done
+}
+
+# Which slot will we boot into if we reboot?
+function active_slot()
+{
+    splctl get-primary
+}
+
+# Give the list of valid slots
+function list_slots()
+{
+    local ACTIVE_SLOT="$(this_slot)"
+    for NAME in "${SLOT_NAMES[@]}"; do
+        if [[ "${NAME}" == "${ACTIVE_SLOT}" ]]; then
+            echo "+ ${NAME} *"
+        else
+            echo "+ ${NAME}"
+        fi
+    done
+}
+
+function set_active()
+{
+    splctl set-primary "${1}"
+}
+
+function dump_config()
+{
+    for NAME in "${SLOT_NAMES[@]}"; do
+      echo "${NAME} boot-count $(splctl get-boot-count "${NAME}")"
+      echo "${NAME} state $(splctl get-state "${NAME}")"
+      echo "${NAME} valid $(splctl get-valid "${NAME}")"
+    done
+    echo "active primary $(splctl get-primary)"
+    echo "active bootfw-slot $(splctl get-bootfw-slot)"
+}
+
+function config_get()
+{
+    if [[ "$1" == "boot-attempts" ]]; then
+        # SteamDeck counts up, so any failed boot attempt is considered bad.
+        # We count down and consider running out of boot attempts as bad.
+        # To impedance-match here, we just say "0" until our boot attempts
+        # are exhausted, at which point we say "1"
+        if [[ "$(splctl get-boot-count "${TARGET_SLOT}")" == "0" ]]; then
+            echo "boot-attempts: 1"
+        else
+            echo "boot-attempts: 0"
+        fi
+    elif [[ "$1" == "image-invalid" ]]; then
+        if [[ "$(splctl get-state "${TARGET_SLOT}")" == "good" ]]; then
+            echo "image-invalid: 0"
+        else
+            echo "image-invalid: 1"
+        fi
+    fi
+}
+
+function config_set()
+{
+    # We only support `stemaos-bootconfig config --set state good/bad`.
+    if [[ "${1}" == "state" ]]; then
+        splctl set-state "${TARGET_SLOT}" "${2}"
+    fi
+}
+
+function config()
+{
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --get)
+                config_get "${2:-}"
+                shift 2
+                ;;
+            --set)
+                config_set "${2:-}" "${3:-}"
+                shift 3
+                ;;
+            --image)
+                TARGET_SLOT="${1:-}"
+                shift 1
+                ;;
+            *)
+                shift 1
+                ;;
+        esac
+    done
+}
+
+# Pass arguments through to the _real_ `steamos-bootconf`, so that we have
+# the actual bootconf files put there in anticipation of switching to the EFI module
+/usr/lib/steamos-efi/steamos-bootconf "$@" >/dev/null 2>/dev/null || true
+
+# Eat an initial `--image` if it exists:
+TARGET_SLOT="$(this_slot)"
+if [[ "${1:-}" == "--image" ]]; then
+    TARGET_SLOT="${2}"
+    shift 2
+fi
+
+# Take in a command
+COMMAND="${1:-config}"
+shift 1
+if [[ "${COMMAND}" == "list-images" ]]; then
+    list_slots
+elif [[ "${COMMAND}" == "this-image" ]]; then
+    this_slot
+elif [[ "${COMMAND}" == "selected-image" ]]; then
+    active_slot
+elif [[ "${COMMAND}" == "set-mode" ]]; then
+    # Set target slot as active
+    if [[ "${1}" == "reboot" ]]; then
+        set_active "${TARGET_SLOT}"
+
+    # Set the _other_ slot as active
+    elif [[ "${1}" == "reboot-other" ]]; then
+        OTHER_SLOT="A"
+        if [[ "${TARGET_SLOT}" == "A" ]]; then
+            OTHER_SLOT="B"
+        fi
+        set_active "${OTHER_SLOT}"
+
+    # Mark this boot as good
+    elif [[ "${1}" == "booted" ]]; then
+        config --set state good
+
+    else
+        echo "WARN: steamos-bootconf Unimplemented mode '${1}'" >&2
+    fi
+elif [[ "${COMMAND}" == "config" ]]; then
+    config "$@"
+elif [[ "${COMMAND}" == "dump-config" ]]; then
+    dump_config
+else
+    echo "WARN: steamos-bootconf Unimplemented command '${COMMAND}'" >&2
+fi

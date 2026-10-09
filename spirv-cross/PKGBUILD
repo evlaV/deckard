@@ -20,10 +20,10 @@ source=("git+https://github.com/KhronosGroup/SPIRV-Cross.git#tag=vulkan-sdk-${_p
         "git+https://github.com/KhronosGroup/glslang.git#tag=vulkan-sdk-${_pkgver}"
         "${_spirv_tools_url}"
         "${_spirv_headers_url}")
-sha256sums=('157abde9a385966669c9ac644155760e568e7bd9fdb59aa92f503250174ec8eb'
-            '988155bad34797304c1d43a1ab85460fa31752b80c29c3995248777e40cc356c'
-            '7659e07da76ea409cdf6665c6a28c1b88702c7846062f03c9be7917c9114376e'
-            '491af3b305404ba4c11465e7f2ff238ea549d6ec014eeac0231e10aed9e393d1')
+sha256sums=('1a7aaa83f76a93e14c4ba8ec027d009739f9e62b4ec25dd3f245d32bc7a11325'
+            '6daf1c3811b4f68be560a762011c346e0414ebeb8908f8cb57517aec5c523822'
+            'a3e5d1f5dbefc057022d1c9c29315e887cb4c491dffb3ee850cbfaa3725ac9c1'
+            'c44aa584944201e4bb4ea5a301cd735c41b7fedeb717e8625b97cd9d7315a4b8')
 
 prepare() {
     mkdir -p SPIRV-Cross/external/{glslang,spirv-tools}
