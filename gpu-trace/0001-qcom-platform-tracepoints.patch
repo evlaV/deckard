@@ -1,0 +1,126 @@
+From df753def74c12961c57ae04dc23ad3d53aa48b1c Mon Sep 17 00:00:00 2001
+From: Gabe Rowe <gaber@valvesoftware.com>
+Date: Wed, 6 May 2026 19:27:37 -0700
+Subject: [PATCH 1/1] qcom platform tracepoints
+
+---
+ bin/gpu-trace.py | 96 +++++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 70 insertions(+), 26 deletions(-)
+
+diff --git a/bin/gpu-trace.py b/bin/gpu-trace.py
+index ae52390..baac1cd 100755
+--- a/bin/gpu-trace.py
++++ b/bin/gpu-trace.py
+@@ -393,6 +393,8 @@ class GpuTrace:
+     traceEvents = [
+         # https://github.com/mikesart/gpuvis/wiki/TechDocs-Linux-Scheduler
+         "sched:sched_switch",
++        "sched:sched_wakeup",
++        "sched:sched_migrate_task",
+         "sched:sched_process_fork",
+         "sched:sched_process_exec",
+         "sched:sched_process_exit",
+@@ -400,32 +402,74 @@ class GpuTrace:
+         "drm:drm_vblank_event",
+         "drm:drm_vblank_event_queued",
+         "drm:drm_vblank_event_delivered",
+-
+-        # https://github.com/mikesart/gpuvis/wiki/TechDocs-AMDGpu
+-        "amdgpu:amdgpu_vm_flush",
+-        "amdgpu:amdgpu_cs_ioctl",
+-        "amdgpu:amdgpu_sched_run_job",
+-        "amdgpu:amdgpu_ttm_bo_move",
+-        "*fence:*fence_signaled",
+-        "amdgpu:amdgpu_vm_bo_map",
+-        "amdgpu:amdgpu_vm_bo_unmap",
+-
+-
+-        # https://github.com/mikesart/gpuvis/wiki/TechDocs-Intel
+-        #
+-        # NOTE: the i915_gem_request_submit, i915_gem_request_in, i915_gem_request_out
+-        # tracepoints require the CONFIG_DRM_I915_LOW_LEVEL_TRACEPOINTS Kconfig option to
+-        # be enabled.
+-        "i915:i915_flip_request",
+-        "i915:i915_flip_complete",
+-        "i915:intel_gpu_freq_change",
+-        "i915:i915_gem_request_add",
+-        "i915:i915_gem_request_submit",
+-        "i915:i915_gem_request_in",
+-        "i915:i915_gem_request_out",
+-        "i915:intel_engine_notify",
+-        "i915:i915_gem_request_wait_begin",
+-        "i915:i915_gem_request_wait_end",
++        "drm:drm_get_vblank_timestamp",
++        "power:cpu_frequency",
++
++        "sde:sde_perf_set_qos_luts",
++        "sde:sde_perf_set_danger_luts",
++        "sde:sde_perf_set_ot",
++        "sde:sde_perf_update_bus",
++        "sde:sde_cmd_release_bw",
++        "sde:sde_encoder_underrun",
++        "sde:tracing_mark_write",
++        "sde:sde_evtlog",
++        "sde:sde_perf_crtc_update",
++        "sde:sde_perf_calc_crtc",
++
++        "drm_msm_atomic:msm_atomic_flush_commit",
++        "drm_msm_atomic:msm_atomic_wait_flush_finish",
++        "drm_msm_atomic:msm_atomic_wait_flush_start",
++        "drm_msm_atomic:msm_atomic_async_commit_finish",
++        "drm_msm_atomic:msm_atomic_async_commit_start",
++        "drm_msm_atomic:msm_atomic_commit_tail_finish",
++        "drm_msm_atomic:msm_atomic_commit_tail_start",
++        "drm_msm_gpu:msm_gpu_submit_retired",
++        "drm_msm_gpu:msm_gpu_submit_flush",
++        "drm_msm_gpu:msm_gpu_submit",
++        "drm_msm_gpu:msm_gmu_freq_change",
++        "drm_msm_gpu:msm_gpu_freq_change",
++
++        "v4l2:vb2_v4l2_qbuf",
++        "v4l2:vb2_v4l2_dqbuf",
++        "v4l2:vb2_v4l2_buf_queue",
++        "v4l2:vb2_v4l2_buf_done",
++        "v4l2:v4l2_qbuf",
++        "v4l2:v4l2_dqbuf",
++
++        "qcom_iris:iris_vdec_streamon_input",
++        "qcom_iris:iris_hfi_response_dequeue",
++        "qcom_iris:iris_hfi_response_output",
++        "qcom_iris:iris_hfi_response_input",
++        "qcom_iris:iris_hfi_queue_buffer",
++        "batt_iadc:batt_iadc_power_avg_now",
++        "batt_iadc:batt_iadc_current_voltage_power_now",
++
++        "qcom_qspi:qspi_prepare_message",
++        "qcom_qspi:qcom_qspi_irq_start",
++        "qcom_qspi:qcom_qspi_irq_pre_complete",
++        "qcom_qspi:qcom_qspi_dma_sync_single_for_device",
++        "qcom_qspi:qcom_qspi_completion_timeout_done",
++
++        "qcom_qdsp6:qcom_qdsp6_irq",
++
++        "qcom_camss:vfe_isr",
++        "qcom_camss:csid_isr",
++        "qcom_camss:csid_isr_wm_done",
++        "qcom_camss:csid_isr_sof",
++
++        "drm_msm_gpu:msm_gpu_preemption_trigger",
++        "drm_msm_gpu:msm_gpu_preemption_irq",
++        "drm_msm_gpu:msm_gpu_devfreq_status",
++
++        "gpuvis:gpuvis_print",
++        "gpuvis:gpuvis_print_begin_dtime",
++
++        "dpu:dpu_crtc_complete_commit",
++        "dpu:dpu_crtc_vblank",
++
++        "power:psci_domain_idle_exit",
++        "power:psci_domain_idle_enter",
++        "hwmon:*",
+     ]
+ 
+ ####################################
+-- 
+2.43.0
+
