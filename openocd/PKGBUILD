@@ -1,6 +1,6 @@
 pkgname=openocd
 pkgver=0.12.0
-pkgrel=1.1
+pkgrel=1.3
 pkgdesc="Debugging, in-system programming and boundary-scan testing for embedded target devices"
 # Current tip of `linuxgpiodv2-emulate-v2-for-v1` branch
 _commit=64fb747da331793ccdbdc3b432f14d719fb0f81b

@@ -4,7 +4,7 @@
 
 pkgname=xdotool
 pkgver=4.20260303.1
-pkgrel=2
+pkgrel=4
 pkgdesc="Command-line X11 automation tool"
 arch=('x86_64' 'aarch64')
 url="https://www.semicomplete.com/projects/xdotool/"
