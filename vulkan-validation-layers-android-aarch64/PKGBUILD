@@ -16,7 +16,7 @@ options=(
 )
 groups=(vulkan-devel)
 source=("${_vulkan_validation_layers_url}")
-sha256sums=('854f83e33130d5e17a3227ba888c5898f679765d44831c2ae73bbfe751428f5a')
+sha256sums=('12b26382a80bf0d86d0dfaf7ab85cd56128eab42270400990fb7d31f3cee7bea')
 
 # Don't create separate debug packages for this package because Android tools don't know how to
 # find things in `/usr/lib/debug`.  Instead just ship debug packages because these layers are tiny.
