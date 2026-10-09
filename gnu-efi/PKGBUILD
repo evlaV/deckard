@@ -2,7 +2,7 @@
 
 pkgname=gnu-efi
 pkgver=4.0.4
-pkgrel=1.1
+pkgrel=1.3
 pkgdesc="Develop EFI applications using the GNU toolchain and the EFI development environment"
 arch=('x86_64' 'aarch64')
 url="https://github.com/ncroxon/gnu-efi"

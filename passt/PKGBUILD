@@ -1,6 +1,6 @@
 pkgname=passt
 pkgver=2026_06_11.a9c61ff
-pkgrel=5
+pkgrel=7
 pkgdesc="Plug A Simple Socket Transport"
 arch=(x86_64 aarch64)
 url="https://passt.top/passt/about/"

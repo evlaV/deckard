@@ -10,7 +10,7 @@
 
 pkgname=mkinitcpio-busybox
 pkgver=1.36.1
-pkgrel=1.3
+pkgrel=1.5
 pkgdesc='Base initramfs tools'
 arch=(x86_64 aarch64)
 url="https://www.busybox.net/"

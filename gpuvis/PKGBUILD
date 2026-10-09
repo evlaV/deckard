@@ -1,7 +1,7 @@
 pkgname=gpuvis
 _commit=504eb62fe52b5e3c1a17e6ca049b5e39b20fffc3
 pkgver=0.1+git${_commit:0:8}
-pkgrel=1.1
+pkgrel=1.3
 pkgdesc="A Linux GPU profiler"
 arch=('aarch64')
 url="https://github.com/mikesart/gpuvis"

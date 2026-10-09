@@ -3,7 +3,7 @@
 
 pkgname='holo-zram-swap'
 pkgver=0.3
-pkgrel=2
+pkgrel=4
 pkgdesc='Configures ZRAM swap'
 arch=('any')
 license=('LGPL2.1')

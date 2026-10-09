@@ -1,0 +1,28 @@
+# Maintainer: John Schoenick <johns@valvesoftware.com>
+pkgname=foxnetstatsd
+pkgver=1.5
+commithash=7f1d16b711a8ac3f13a34e19395a99b0c69e9ac1
+pkgrel=13
+pkgdesc="Foxnet stats daemon"
+arch=(any)
+depends=(python-psutil python-aiohttp nvme-cli 'python>=3.11' 'python<3.15')
+makedepends=(git openssh)
+source=(git+https://github.com/evlav/deckard-foxnetstatsd.git#commit="$commithash"
+        wheel-foxnetstatsd
+        foxnetstatsd.service)
+
+sha256sums=('SKIP'
+            '8faa8a10d832b483886ce0d59e2d513f3288fe96bdd56e1599004b83a4da08dc'
+            'd7036a6374ae0d89997296414bb2c2288462e8ccc46c1b7526978e53be0fc8db')
+
+package() {
+  install -D -m644 -t "$pkgdir"/usr/python/foxnetstatsd/ foxnetstatsd/*.py
+  install -D -m644 wheel-foxnetstatsd "$pkgdir"/etc/sudoers.d/wheel-foxnetstatsd
+
+  install -D -m755 -t "$pkgdir"/usr/bin/ foxnetstatsd/foxnet-stats-daemon
+
+  install -D -m644 foxnetstatsd.service "$pkgdir"/etc/systemd/system/foxnetstatsd.service
+
+  mkdir -p -m755 "$pkgdir"/etc/systemd/system/sound.target.wants
+  mkdir -p -m755 "$pkgdir"/etc/systemd/system/multi-user.target.wants
+}
