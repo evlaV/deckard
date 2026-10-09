@@ -27,7 +27,7 @@ options=(
 )
 groups=(vulkan-devel)
 source=("${_vulkan_utility_libraries_url}")
-b2sums=('012f0489c7ba76f696c4b1792085397be3ed0858c666cea20e4d1e0e3369293af7edb7683396d28ae2e914b51366887da863f6920cbd4eb9033caae2b5401545')
+b2sums=('22851420b0291e30a909c6b57186170d2d76cc34176198531b3178b260af5e93cb8999f3e617650af0a3fd6f21fc60fb3bd60187ac5fb7b46defa00016786a6f')
 
 build() {
   local cmake_options=(

@@ -8,7 +8,7 @@
 pkgbase=ibus
 pkgname=(ibus libibus)
 pkgver=1.5.32
-pkgrel=2.4
+pkgrel=2.7
 pkgdesc="Intelligent input bus for Linux/Unix"
 arch=('x86_64' 'aarch64')
 url="https://github.com/ibus/ibus/wiki"
@@ -36,7 +36,7 @@ depends=(
     'wayland'
 )
 makedepends=(
-    #'glib2-devel' # DECKARD HACK
+    'glib2-devel'
     'gobject-introspection'
     'gtk-doc'
     'qt5-base'

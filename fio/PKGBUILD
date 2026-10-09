@@ -4,7 +4,7 @@
 
 pkgname=fio
 pkgver=3.41
-pkgrel=1.1
+pkgrel=1.3
 pkgdesc='Scriptable I/O tool for storage benchmarks and drive testing'
 arch=(aarch64)
 url='https://github.com/axboe/fio'
