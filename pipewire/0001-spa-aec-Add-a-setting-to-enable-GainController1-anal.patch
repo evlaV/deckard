@@ -1,0 +1,31 @@
+From b83d481dc9e7b53eeedf4a7d8b538ecc8da99654 Mon Sep 17 00:00:00 2001
+From: Arun Raghavan <arunr@valvesoftware.com>
+Date: Mon, 15 Jun 2026 17:52:46 -0700
+Subject: [PATCH] spa: aec: Add a setting to enable GainController1 analog
+ controller
+
+Even though analog gain is not wired up, this mode can be a bit better
+for quiet talkers, so let's at least keep the option available for now.
+---
+ spa/plugins/aec/aec-webrtc.cpp | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/spa/plugins/aec/aec-webrtc.cpp b/spa/plugins/aec/aec-webrtc.cpp
+index 67231c280b0c..6a6766e513d6 100644
+--- a/spa/plugins/aec/aec-webrtc.cpp
++++ b/spa/plugins/aec/aec-webrtc.cpp
+@@ -231,8 +231,9 @@ static int webrtc_init2(void *object, const struct spa_dict *args,
+ 
+ 	config.gain_controller1.enabled = gain_control1;
+ 	config.gain_controller1.mode = agc1_mode;
+-	// This must be explicitly disabled for the above mode to take effect
+-	config.gain_controller1.analog_gain_controller.enabled = false;
++	// This must be explicitly disabled for the above mode to take effect, but can be useful for boosting quiet talkers
++	config.gain_controller1.analog_gain_controller.enabled =
++		webrtc_get_spa_bool(args, "webrtc.gain_control1.analog_gain_controller.enabled", false);
+ 	config.gain_controller1.enable_limiter =
+ 		webrtc_get_spa_bool(args, "webrtc.gain_control1.enable_limiter", true);
+ 	webrtc_get_spa_int(impl, args, "webrtc.gain_control1.target_level_dbfs", &config.gain_controller1.target_level_dbfs);
+-- 
+2.54.0
+
