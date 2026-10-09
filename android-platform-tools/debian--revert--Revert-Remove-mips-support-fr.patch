@@ -1,0 +1,57 @@
+Description: Revert "Remove mips support from register getting functions"
+ This partly reverts: https://android-review.googlesource.com/2048663
+ And it restores the mips support.
+ .
+ This partly reverts commit eead878fde3b9df5b5d819b955f7e5da2c3b1589.
+Forwarded: not-needed
+--- a/system/unwinding/libunwindstack/Regs.cpp
++++ b/system/unwinding/libunwindstack/Regs.cpp
+@@ -29,11 +29,15 @@
+ #include <unwindstack/Regs.h>
+ #include <unwindstack/RegsArm.h>
+ #include <unwindstack/RegsArm64.h>
++#include <unwindstack/RegsMips.h>
++#include <unwindstack/RegsMips64.h>
+ #include <unwindstack/RegsRiscv64.h>
+ #include <unwindstack/RegsX86.h>
+ #include <unwindstack/RegsX86_64.h>
+ #include <unwindstack/UserArm.h>
+ #include <unwindstack/UserArm64.h>
++#include <unwindstack/UserMips.h>
++#include <unwindstack/UserMips64.h>
+ #include <unwindstack/UserRiscv64.h>
+ #include <unwindstack/UserX86.h>
+ #include <unwindstack/UserX86_64.h>
+@@ -75,6 +79,10 @@ Regs* Regs::RemoteGet(pid_t pid, ErrorCode* error_code) {
+     return RegsArm64::Read(buffer.data());
+   case sizeof(riscv64_user_regs):
+     return RegsRiscv64::Read(buffer.data());
++  case sizeof(mips_user_regs):
++    return RegsMips::Read(buffer.data());
++  case sizeof(mips64_user_regs):
++    return RegsMips64::Read(buffer.data());
+   }
+ 
+   Log::Error("No matching size of user regs structure for pid %d: size %zu", pid, io.iov_len);
+@@ -109,6 +117,10 @@ ArchEnum Regs::RemoteGetArch(pid_t pid, ErrorCode* error_code) {
+       return ARCH_ARM64;
+     case sizeof(riscv64_user_regs):
+       return ARCH_RISCV64;
++    case sizeof(mips_user_regs):
++      return ARCH_MIPS;
++    case sizeof(mips64_user_regs):
++      return ARCH_MIPS64;
+   }
+ 
+   Log::Error("No matching size of user regs structure for pid %d: size %zu", pid, io.iov_len);
+@@ -130,6 +142,10 @@ Regs* Regs::CreateFromUcontext(ArchEnum arch, void* ucontext) {
+       return RegsArm64::CreateFromUcontext(ucontext);
+     case ARCH_RISCV64:
+       return RegsRiscv64::CreateFromUcontext(ucontext);
++    case ARCH_MIPS:
++      return RegsMips::CreateFromUcontext(ucontext);
++    case ARCH_MIPS64:
++      return RegsMips64::CreateFromUcontext(ucontext);
+     case ARCH_UNKNOWN:
+     default:
+       return nullptr;

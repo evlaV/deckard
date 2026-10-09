@@ -1,0 +1,56 @@
+Description: Revert "Replacing hardcoded types with decltype() for
+ enforcing static invariants and removing spurious assertions."
+ This reverts commit 45720fdaea751c63081541b6c18ab512becd32a4.
+Forwarded: not-needed
+--- a/packages/modules/adb/client/adb_wifi.cpp
++++ b/packages/modules/adb/client/adb_wifi.cpp
+@@ -49,7 +49,8 @@ struct PairingResultWaiter {
+         {
+             std::lock_guard<std::mutex> lock(p->mutex_);
+             if (peer_info) {
+-                static_assert(std::is_standard_layout<decltype(p->peer_info_)>());
++                static_assert(std::is_standard_layout<struct PeerInfo>());
++                static_assert(std::is_standard_layout<struct PairingResultWaiter>());
+                 memcpy(&(p->peer_info_), peer_info, sizeof(PeerInfo));
+             }
+             p->is_valid_ = (peer_info != nullptr);
+@@ -214,6 +215,7 @@ void adb_wifi_pair_device(const std::string& host, const std::string& password,
+     std::string public_key = adb_auth_get_userkey();
+     CHECK_LE(public_key.size(), sizeof(system_info.data) - 1);  // -1 for null byte
+ 
++    static_assert(std::is_standard_layout<uint8_t>());
+     memcpy(system_info.data, public_key.data(), public_key.size());
+ 
+     auto pswd8 = stringToUint8(password);
+--- a/packages/modules/adb/types.h
++++ b/packages/modules/adb/types.h
+@@ -98,7 +98,7 @@ struct Block {
+     const char& operator[](size_t idx) const { return data()[idx]; }
+ 
+     bool operator==(const Block& rhs) const {
+-        static_assert(std::is_standard_layout<decltype(data())>());
++        static_assert(std::is_standard_layout<Block>());
+         return size() == rhs.size() && memcmp(data(), rhs.data(), size()) == 0;
+     }
+ 
+@@ -232,7 +232,7 @@ struct IOVector {
+ 
+         size_t offset = 0;
+         iterate_blocks([&offset, &result](const char* data, size_t len) {
+-            static_assert(std::is_standard_layout<decltype(result)>());
++            static_assert(std::is_standard_layout<CollectionType>());
+             memcpy(&result[offset], data, len);
+             offset += len;
+         });
+--- a/packages/modules/adb/types_test.cpp
++++ b/packages/modules/adb/types_test.cpp
+@@ -32,7 +32,8 @@ static IOVector::block_type create_block(char value, size_t len) {
+     auto block = IOVector::block_type();
+     block.resize(len);
+ 
+-    static_assert(std::is_standard_layout<decltype(block)>());
++    static_assert(std::is_standard_layout<struct Block>());
++    static_assert(std::is_standard_layout<struct IOVector>());
+     memset(&(block)[0], value, len);
+ 
+     return block;

@@ -1,0 +1,16 @@
+Description: Support mips
+ Some error codes might be different between common and MIPS API:
+ - /usr/include/asm-generic/errno.h
+ - /usr/include/mips64el-linux-gnuabi64/asm/errno.h
+Forwarded: not-needed
+--- a/packages/modules/adb/sysdeps/errno.cpp
++++ b/packages/modules/adb/sysdeps/errno.cpp
+@@ -48,7 +48,7 @@
+     ERRNO_VALUE(ETXTBSY, 26)
+ 
+ // Make sure these values are actually correct.
+-#if defined(__linux__)
++#if defined(__linux__) && !defined(__mips__)
+ #define ERRNO_VALUE(error_name, wire_value) static_assert((error_name) == (wire_value), "")
+ ERRNO_VALUES();
+ #undef ERRNO_VALUE

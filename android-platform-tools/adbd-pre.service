@@ -1,0 +1,34 @@
+[Unit]
+Description=Android Debug Bridge USB gadget setup
+
+# It's important that when adbd goes down, we go down too
+PartOf=adbd.service
+
+# Run this after USB gadget is setup, but before binding
+After=usb-gadget-init.service
+Requires=usb-gadget-init.service
+Before=usb-gadget.service
+
+# Make sure usbfunc:ffs is loaded/available
+After=modprobe@usbfunc:ffs.service
+Wants=modprobe@usbfunc:ffs.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+EnvironmentFile=/run/usb-gadget-tools/env
+WorkingDirectory=/sys/kernel/config/usb_gadget
+
+# Create ffs.adb function
+ExecStart=-/usr/bin/mkdir ${USB_GADGET_NAME}/functions/ffs.adb
+ExecStop=-/usr/bin/rmdir ${USB_GADGET_NAME}/functions/ffs.adb
+
+[Install]
+WantedBy=usb-gadget.target
+
+# When adding or removing this service, also add or remove these services (include self for easy copy-paste):
+Also=adbd-pre.service
+Also=adbd-post.service
+Also=adbd.service
+Also=dev-usb\\x2dffs-adb.mount

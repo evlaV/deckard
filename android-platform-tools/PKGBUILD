@@ -1,0 +1,198 @@
+# Maintainer: Vivek Das Mohapatra <vivek@collabora.com>
+# NOTE: based on the debian packaging of android-platform-tools
+
+pkgname=android-platform-tools
+url=https://developer.android.com/studio/releases/platform-tools
+_commit=a7d33a25ec1027b4f6502802b40b5fe71e2f976e
+pkgver=34.0.5+g${_commit:0:12}
+pkgrel=7
+arch=('x86_64' 'aarch64')
+license=('Apache-2.0' 'PSF' 'public-domain' 'Khronos')
+makedepends=(7zip brotli libcap gtest lz4 libpng clang lld
+             protobuf systemd-libs libusb pandoc python)
+depends=(python brotli libcap lz4 libpng protobuf systemd-libs libusb 'android-boringssl>=12' abseil-cpp)
+source=("android-platform-tools::git+https://github.com/evlav/deckard-android-platform-tools#commit=${_commit}"
+        'squashfs-tools::git+https://android.googlesource.com/platform/external/squashfs-tools#commit=1b689b97a9d7fe9b32c1bd38b5a6440b08e309a2' # platform-tools-34.0.5
+        'adbd.modules-load'
+        'adbd-pre.service'
+        'adbd-post.service'
+        'adbd.service'
+        'usb-gadget-adbd-restart.conf'
+        'copyright'
+        'adb.mk'
+        'adbd.mk'
+        'append2simg.mk'
+        'check.mk'
+        'dev-usb-ffs-adb.mount'
+        'etc1tool.mk'
+        'fastboot.mk'
+        'hprof-conv.mk'
+        'img2simg.mk'
+        'install.mk'
+        'libETC1.mk'
+        'libadb.mk'
+        'libbacktrace.mk'
+        'libbase.mk'
+        'libcpu_features.mk'
+        'libcrypto_utils.mk'
+        'libcutils.mk'
+        'libext4_utils.mk'
+        'liblog.mk'
+        'libnativehelper.mk'
+        'libsparse.mk'
+        'libutils.mk'
+        'libziparchive.mk'
+        'package.mk'
+        'prettyprint.mk'
+        'simg2img.mk'
+        'simg2simg.mk'
+        'toolchain-support.mk'
+        'trace-build-exit.mk'
+        'trace-build-init.mk'
+        'debian--revert--Revert-Remove-mips-support.patch'
+        'debian--revert--Revert-Remove-mips-build.patch'
+        'debian--revert--Revert-Remove-mips-support-fr.patch'
+        'debian--revert--Revert-Remove-a-file-we-haven-t-built-since-2013.patch'
+        'debian--revert--support-mips.patch'
+        'debian--revert--Revert-3-Add-rust-demangling.patch'
+        'debian--revert--Revert-Replacing-hardcoded-types-with-decltype-for-e.patch'
+        'debian--revert--Revert-Enforcing-static-invariants-to-prevent-failur.patch'
+        'debian--revert--Revert-Drop-all-path-rel.patch'
+        'debian--revert--Revert-Lose-convertToResPath-to-aapt.patch'
+        'debian--gcc-only--stdatomic.patch'
+        'debian--gcc-only--workaround__builtin_available.patch'
+        'debian--gcc-only--Nullable.patch'
+        'debian--system--unwindstack-porting.patch'
+        'debian--system--move-log-file-to-proper-dir.patch'
+        'debian--system--Added-missing-headers.patch'
+        'debian--system--libusb-header-path.patch'
+        'debian--system--throw-exception-on-unknown-os.patch'
+        'steamos--system--hard-code-build-number.patch'
+        'debian--system--stub-out-fastdeploy.patch'
+        'debian--system--Implement-const_iterator-operator.patch'
+        'debian--system--Drop-gki-dependency-from-mkbootimg.patch'
+        'debian--system--gcc-14.patch'
+        'debian--system--add-missing-headers.patch'
+        'debian--development--typos.patch'
+        'debian--adbd--adbd-allow-usb-on-linux.patch'
+        'debian--adbd--adbd-allow-notifying-systemd.patch'
+        'debian--adbd--adbd-usb-drop-property-monitor.patch'
+        'debian--adbd--adbd-don-t-require-authorization-on-Linux.patch'
+)
+sha256sums=('SKIP'
+            'SKIP'
+            '3bb94e0181c879c62506e5a08adddf1310d03ad82a4654d5aa3df2cc6568954d'
+            '17bc19d901310330e51e3e15c22d733606e46a6ea9f54d432db5beef338ae16b'
+            '8bde7715ab12ef1d86187f5e939ca5e0beef8acc4aa750eb3f79eb1e5fe70d6c'
+            '9277538908ca3afa7cf0ff397b1f6f569489fd569441b939bc954ba9e0a28bf9'
+            '3210d7c759b6df81ea7acb16ab2dbcf20af4591e34513362534498465e79fe63'
+            'fdc569b04b1e338966cc0ec9573e6dbf53991102d8cb3ecc69e5a6fb05f13435'
+            'e25f7c308d51991a0701d848c04cd89c0cda7ff3884149a2041d2b86047137c4'
+            '6b660c54d18c24398eecf83f6976c7765a5aeceaaa7463c7f81ac4e2147da1df'
+            '8eb6fa9c14a35cd6701ab0459676c3c51eaeb3979e2fbff3c7f01644a5b0ada2'
+            '7c70dc5e115d33d5839e7675f9a6fce52700ab643da54ff1fbe4e971f9c133ee'
+            'b377b1890b677f46a9b68e749f0838848616d97f6bff5307e7b73f1087e2ce31'
+            '8500eaee54a745806dd92a791904b07b20fb709dc1381d1ce1706445ec37750d'
+            '4bfa0cede95e371f0e0e72580075f1c4fd7025b2f15b24e3ba108e54fa803f26'
+            '0b4ea3d95cc81f8611f5751f604bb26f2a6b63ac0e4765e3552cb0680f5fd6be'
+            '5118ab64d92e97e5e8a72a30c736922a5e6ca0458d723aaddcd3748d86b9b128'
+            '604c489b50cb2f56af613cb3a90181187de66287cb2082bd18df10818d0291e0'
+            '6d7905ea8329884e590ccadd7b48f667f77f9d1340034582a0ed18b02bda934c'
+            'cacc1b3f1d897419e2faae5417552e367124a9802f33c9e50684c41706d05340'
+            'e2fa2cff974ee57e4d8d6ed7fa47a242506d84d961b8b92e1d4a391eac1bda13'
+            '1aa31a1ab3f52d5e2d09bc2b1b45e89dfdcecfe00efeabf6b8c3f7cf5daef594'
+            'e88968b84d7b3457ec138efb65b12e2617745c9cb5315cbe159712880557eb8d'
+            '4c53a21554db9ddcd7fab56929dbbc5247072c61f87156f42530fd0d700a9ef9'
+            '79079c66e959c7ebceda74a533dbf09807f1b64a18f33ba6964b1bc0f4fdd036'
+            'e43c34889a856bc304b3453693cef6cb53b5d410c5cb8914825c7514a883fb44'
+            'aed26d25b33b2779cfbb16442745e331685e026e8229b2e5a41d2a01ca02570a'
+            '6fd5c5073eff01bbe438be5a21fdf82b70a824c15af2cdc2b1e916a77c3a7cd7'
+            '4746ea9352aa327d01e542908ab9ab2036627adfec874890859a7e6e5b45f12f'
+            '7f6695c1ab1e13d710eb24e43c4e148b523e4c5a8eadf0ab68fd99dd12771551'
+            '78190667d777d5d526c1617f7700c87a33f542982397fd6a8f51f99c1574e41d'
+            'c6f9a8b38c92048e714092f2e365983225a20f9b2407fd17c205085d792ef7dc'
+            '7cc74c7d477c13184c505f93d1a3d1e58bdaed3068f2fd114d1d027b000743ed'
+            '64b0ad501aa453048a03a3f5e0b5ea0e86caa2e585a5323cfac2860b6788172a'
+            '547aef0341b48cbaac685a40d2736168d1866da4ddc954b56824b638aacfb448'
+            'fcd466d0354c2364fe6230dd4e361aab65e9e8aa4a9c7af2c0a7eae648d3e674'
+            '6b2acb7e4e297661908eb691e52f760e10594de161d200558e3a5d27380dda4d'
+            '901df1d6a3d78d565251c5a06ab6f243adc63ad7174198b792225376e186d89b'
+            'a8f213090a2ead7df77bf6b6d14b33b21846feaaf12d13ca8f43bb146c3f7240'
+            '383dc7d4a11856816eac45aa07f098a8332fff716b4a3a9eb2374c332843ab98'
+            '9f2ed32ee4d6ea849c8f94c594124afb977c859b88aaf72bedcba7969580dcfc'
+            '376f9e7eb53e7c93f2eed73a251ae7ad112d7ac5c821f2770ab853ab9d738e4c'
+            '350f2f269413b59e48b02d495e5d0d56bb90713384d8987524311384f284fd18'
+            '3b98d948b9542351498a9bb98a7ecce950fc5e5143ab1a7cbbada3e6f898c8c3'
+            'cea9647f7d88b96a3ee3c319d542669c5f1cd4615d6366d8a391878dabb2b552'
+            'b7ef85c31eefde35aa6f7d06866a5366ed53f40a42a0102790f7f7f1fa8c2e4e'
+            'd2d9504ba2a6e9ef98819e361f95ebfdba5e4e24068142db730ec433257800df'
+            'c5c95fd3b0ffeaba032988526bf31760e56746b0f6e52896277a1a82e1621a24'
+            '1a2b5091d58b3cdf5141f27322fdb9f6039302b4b1a043668a9fadc29263b35a'
+            '7f07f69c044c9ca3443d62d9f9aae2c77581e8eb8aaf49cc7f2d679d0ffea02a'
+            'ad50d9ac47f8f542d5b099693878471ad4e78d7aafe85945bd2b369e64e54824'
+            '2b7cb02c48501621b519f60014f759f71dc4c804b171e8dcfcfa1a774156da4d'
+            'cf13fe29a203bc9d4dc58ca2cdd5e2d503284b4a9319a8d77defb8f55aa565a9'
+            '0824d223204da64453d752c9f77dd55fde83514a9e57ab27d70c2aa8063e4b96'
+            '5772b3bf0ea796b99b3dc799dd75da822ffbb256523a041b56c92a4e2378722e'
+            'd63a4289b5280f124aae2ea13482ab4b44a42062d11df613a5169cd70c6bcf1d'
+            '1638e8e94fd399c075211246cfddc3d292cd223fff8c25a7fa15abf6cc01c929'
+            '623c517e30265ca33555133ea11f22d16bf10bc00e5243c8ac1a4ad7b932a865'
+            '5b53dfa26c7b9e30cb12e658f05ada79389a31b78adbef1db95287ae53cab608'
+            '5159dcf54704944938af5aeb8fd3b4ff3415eec345d5016078be0bdedb40be00'
+            'bb46029fa130fd918e32abfb251363a6677150ca7c35da3749df593128a255c2'
+            'bfcf14e7a83612a47264ec962bbb43837b0b6cf19a03d36e40b722a23dec4882'
+            '6611d162e702d5243499e0034035eecd4e74f59600e4469265ca462624db6eb8'
+            'ecb4d8c94d7c8212cca846e3c3ccf0f692116e3ea5567ab3321133483c4dda4d'
+            '28372b10c4479e91a273121bab3fdbac8905ed2d199536a8062e70baae112b37'
+            '844a5f44c0a8bfc4b7baf1702b5a1c52813c89d84e5ac1838974ff8d6c973347'
+            'f33e0756422d04b832d9da4180c0897bb8be77c9f8b9f9108e86e20ac48dd1d7')
+
+prepare() {
+  local patch=
+  cd "$pkgname"
+
+  ln -sfT "$srcdir/squashfs-tools" external/squashfs-tools
+
+  for patch in "${source[@]}"
+  do
+    case $patch in
+      *.patch) patch -p1 < ../"$patch" ;;
+    esac
+  done
+}
+
+build() {
+  local -r VPATH=${srcdir}/${pkgname}
+
+  mkdir -p ${srcdir}/build
+  cd ${srcdir}/build
+
+  # run V=1 makepkg … to get show the full commands run.
+  #
+  # TRACE_BUILDSYSTEM=1 will show you which objects are
+  # added by each makefile
+  #
+  # To disable a component, remove its include line from
+  # package.mk
+  make VERSION=${pkgver} CARCH=${CARCH} VPATH=${VPATH} \
+       -f ../package.mk debug-build all
+}
+
+check() {
+  local -r VPATH=${srcdir}/${pkgname}
+
+  cd ${srcdir}/build
+  make PKGNAME=${pkgname} VERSION=${pkgver} CARCH=${CARCH} VPATH=${VPATH} \
+       -f ../package.mk check
+}
+
+package() {
+  local -r VPATH=${srcdir}/${pkgname}
+
+  cd ${srcdir}/build
+  make PKGNAME=${pkgname} VERSION=${pkgver} CARCH=${CARCH} VPATH=${VPATH} \
+       DESTDIR=${pkgdir} \
+       -f ../package.mk install
+
+  install -D -t $pkgdir/usr/share/doc/${pkgname} ../copyright
+}
