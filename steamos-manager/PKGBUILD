@@ -4,7 +4,7 @@ pkgname=steamos-manager
 _commit=304a0816d6f6373d0c83fc5636f29b6df5e2838a
 _srctag=v26.4.1
 pkgver=${_srctag##v}
-pkgrel=3
+pkgrel=5
 pkgdesc='SteamOS Manager daemon for running various system management tasks'
 arch=('x86_64')
 url='https://store.steampowered.com/steamos/'
@@ -21,7 +21,8 @@ optdepends=('cecd: CEC support'
             'scx-scheds: LAVD scheduler support'
             'steamos-customizations-jupiter: jupiter support'  # Needed for steamos-factory-reset-config
             'steamos-log-submitter: ftrace logging')
-makedepends=('rustup'
+makedepends=('rust'
+             'cargo'
              'clang'  # For the speech-dispatcher-sys crate
              'git'
              'holo-rust-packaging-tools'
@@ -461,9 +462,6 @@ replaces=('ds-inhibit')
 prepare() {
 	export RUSTUP_TOOLCHAIN=stable
 	cd "$srcdir"
-
-	# Work around our packaged rust toolchain being too old (v1.77, we need v1.78+)
-	rustup toolchain install stable
 
 	holo-vendor-rust-sources -o vendored -L "$pkgname-$pkgver/Cargo.lock" *.tar.gz
 

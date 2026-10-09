@@ -1,0 +1,110 @@
+diff --git a/src/core/devices/wifi/nm-wifi-ap.c b/src/core/devices/wifi/nm-wifi-ap.c
+index ceb954b797..a4f8adf74d 100644
+--- a/src/core/devices/wifi/nm-wifi-ap.c
++++ b/src/core/devices/wifi/nm-wifi-ap.c
+@@ -581,6 +581,8 @@ freq_to_band(guint32 freq)
+         return 5;
+     else if (freq >= 2412 && freq <= 2484)
+         return 2;
++    else if (freq >= 5925 && freq <= 7115)
++        return 6;
+     return 0;
+ }
+ 
+@@ -637,6 +639,8 @@ nm_wifi_ap_check_compatible(NMWifiAP *self, NMConnection *connection)
+             return FALSE;
+         else if (!strcmp(band, "bg") && ap_band != 2)
+             return FALSE;
++        else if (!strcmp(band, "no6") && ap_band == 6)
++            return FALSE;
+     }
+ 
+     channel = nm_setting_wireless_get_channel(s_wireless);
+diff --git a/src/core/supplicant/nm-supplicant-config.c b/src/core/supplicant/nm-supplicant-config.c
+index 4433e809e9..32774eb697 100644
+--- a/src/core/supplicant/nm-supplicant-config.c
++++ b/src/core/supplicant/nm-supplicant-config.c
+@@ -395,6 +395,48 @@ again:
+     return f;
+ }
+ 
++static const char *
++abg_freqs_to_string(void)
++{
++    static const char *str_abg = NULL;
++    const char       **f_p;
++    const char        *f;
++
++    f_p = &str_abg;
++
++again:
++    f = g_atomic_pointer_get(f_p);
++
++    if (G_UNLIKELY(!f)) {
++        nm_auto_str_buf NMStrBuf strbuf = NM_STR_BUF_INIT(800, FALSE);
++        const guint             *freqs;
++        int                      i;
++
++        freqs = nm_utils_wifi_2ghz_freqs();
++        for (i = 0; freqs[i]; i++) {
++            if (i > 0)
++                nm_str_buf_append_c(&strbuf, ' ');
++            nm_str_buf_append_printf(&strbuf, "%u", freqs[i]);
++        }
++
++        freqs = nm_utils_wifi_5ghz_freqs();
++        for (i = 0; freqs[i]; i++) {
++            nm_str_buf_append_c(&strbuf, ' ');
++            nm_str_buf_append_printf(&strbuf, "%u", freqs[i]);
++        }
++
++
++        f = g_strdup(nm_str_buf_get_str(&strbuf));
++
++        if (!g_atomic_pointer_compare_and_exchange(f_p, NULL, f)) {
++            g_free((char *) f);
++            goto again;
++        }
++    }
++
++    return f;
++}
++
+ gboolean
+ nm_supplicant_config_add_setting_macsec(NMSupplicantConfig    *self,
+                                         NMSettingMacsec       *setting,
+@@ -684,6 +726,8 @@ nm_supplicant_config_add_setting_wireless(NMSupplicantConfig *self,
+                 freqs = wifi_freqs_to_string(FALSE);
+             else if (nm_streq(band, "bg"))
+                 freqs = wifi_freqs_to_string(TRUE);
++            else if (nm_streq(band, "no6"))
++                freqs = abg_freqs_to_string();
+ 
+             if (freqs
+                 && !nm_supplicant_config_add_option(self,
+diff --git a/src/libnm-core-impl/nm-setting-wireless.c b/src/libnm-core-impl/nm-setting-wireless.c
+index be08fa8cb6..653a3cce8e 100644
+--- a/src/libnm-core-impl/nm-setting-wireless.c
++++ b/src/libnm-core-impl/nm-setting-wireless.c
+@@ -1086,7 +1086,7 @@ verify(NMSetting *setting, NMConnection *connection, GError **error)
+                                                NM_SETTING_WIRELESS_MODE_AP,
+                                                NM_SETTING_WIRELESS_MODE_MESH,
+                                                NULL};
+-    const char               *valid_bands[] = {"a", "bg", NULL};
++    const char               *valid_bands[] = {"a", "bg", "no6", NULL};
+     guint                     i;
+     gsize                     length;
+     GError                   *local = NULL;
+diff --git a/src/libnmc-setting/nm-meta-setting-desc.c b/src/libnmc-setting/nm-meta-setting-desc.c
+index 5568c05d22..11e5189432 100644
+--- a/src/libnmc-setting/nm-meta-setting-desc.c
++++ b/src/libnmc-setting/nm-meta-setting-desc.c
+@@ -8222,7 +8222,7 @@ static const NMMetaPropertyInfo *const property_infos_WIRELESS[] = {
+     PROPERTY_INFO_WITH_DESC (NM_SETTING_WIRELESS_BAND,
+         .property_type =                &_pt_gobject_string,
+         .property_typ_data = DEFINE_PROPERTY_TYP_DATA (
+-            .values_static =            NM_MAKE_STRV ("a", "bg"),
++            .values_static =            NM_MAKE_STRV ("a", "bg", "no6"),
+         ),
+     ),
+     PROPERTY_INFO_WITH_DESC (NM_SETTING_WIRELESS_CHANNEL,
