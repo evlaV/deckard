@@ -2,9 +2,10 @@
 # Contributor: Emil Velikov <emil.l.velikov@gmail.com>
 
 pkgname=('mangohud')
-_srctag=20260922.1
-pkgver=${_srctag//-/.}
-pkgrel=1.3
+_commit=e5d31119b521775de01ec41154c3ddb0a4c8c0cb
+pkgver=0.8.4.r179.ge5d31119
+pkgrel=1
+epoch=1
 pkgdesc="Vulkan and OpenGL overlay to display performance information"
 url="https://github.com/flightlessmango/MangoHud"
 arch=(x86_64 aarch64)
@@ -17,11 +18,10 @@ makedepends=(
   glfw-x11
   glslang
   libglvnd
-  libtracefs
   libx11
   libxnvctrl
   libxrandr
-  meson
+  'meson>=1.4.0'
   nlohmann-json
   python
   python-mako
@@ -32,52 +32,66 @@ depends=(
   dbus # media player info
   glew # for mangoapp
   glfw-x11 # for mangoapp
+  libcap
+  libdrm
   libglvnd # for GL overlay
+  libtracefs
   libx11 # for mangoapp
   libxkbcommon
   spdlog
+  vulkan-icd-loader
+  wayland
 )
 
 source=(
-  "mangohud"::"git+https://github.com/evlav/deckard-MangoHud#tag=$_srctag"
-  "imgui-v1.89.9.tar.gz::https://github.com/ocornut/imgui/archive/refs/tags/v1.89.9.tar.gz"
-  "imgui-1.89-9-wrap.zip::https://wrapdb.mesonbuild.com/v2/imgui_1.89.9-1/get_patch"
+  "mangohud"::"git+https://github.com/flightlessmango/MangoHud.git#commit=$_commit"
+  "imgui-1.91.6.tar.gz::https://github.com/ocornut/imgui/archive/refs/tags/v1.91.6.tar.gz"
   "implot-v0.16.zip::https://github.com/epezent/implot/archive/refs/tags/v0.16.zip"
   "implot-v0.16-1-wrap.zip::https://wrapdb.mesonbuild.com/v2/implot_0.16-1/get_patch"
-  "vulkan-headers-1.2.158.tar.gz::https://github.com/KhronosGroup/Vulkan-Headers/archive/v1.2.158.tar.gz"
-  "vulkan-headers-1.2.158-2-wrap.zip::https://wrapdb.mesonbuild.com/v2/vulkan-headers_1.2.158-2/get_patch"
+  "vulkan-headers-1.4.346.tar.gz::https://github.com/KhronosGroup/Vulkan-Headers/archive/v1.4.346.tar.gz"
+  "vulkan-utility-libraries-1.4.346.tar.gz::https://github.com/KhronosGroup/Vulkan-Utility-Libraries/archive/v1.4.346.tar.gz"
+  "0001-meson-support-1.4-without-mangohud-next.patch"
 )
 
 sha256sums=('SKIP'
-            '1acc27a778b71d859878121a3f7b287cd81c29d720893d2b2bf74455bf9d52d6'
-            '9b21290c597d76bf8d4eeb3f9ffa024b11d9ea6c61e91d648ccc90b42843d584'
+            'c5fbc5dcab1d46064001c3b84d7a88812985cde7e0e9ced03f5677bec1ba502a'
             '24f772c688f6b8a6e19d7efc10e4923a04a915f13d487b08b83553aa62ae1708'
             '1c6b1462066a5452fa50c1da1dd47fed841f28232972c82d778f2962936568c7'
-            '53361271cfe274df8782e1e47bdc9e61b7af432ba30acbfe31723f9df2c257f3'
-            '860358cf5e73f458cd1e88f8c38116d123ab421d5ce2e4129ec38eaedd820e17')
+            '5bb77f5d7b460e255a9e51affc00d64354986b55cf577d8eab28529cad01fc80'
+            '372eb525103ecb4e3a04d030b2a9778ebc67853bbdc82ce6747de3757d432ad9'
+            '857f1f8c376ffeb33de803cce07d81be7f6c924666aaf5000f60b75630bb55f1')
 
 # Get `download_git` available for use
 source /usr/share/makepkg/util/source.sh
 source /usr/share/makepkg/source/git.sh
 pkgver() {
   # This to allow `pkgver()` to work from `find_unbuilt_packages.sh`
-  if [[ ! -d mangohud ]]; then
+  if [[ -d mangohud ]]; then
+    cd mangohud
+  else
     if [[ ! -v "startdir" ]]; then
       startdir="$(pwd)"
     fi
     download_git "${source[0]}" >/dev/null
+    cd "$(get_filepath "${source[0]}")"
   fi
-  cd mangohud
-  git describe --tags | sed -r 's/^v//;s/([^-]*-g)/r\1/;s/-/./g'
+  git describe --tags "$_commit" | sed -r 's/^v//;s/([^-]*-g)/r\1/;s/-/./g'
 }
 
 prepare() {
   cd mangohud
 
+  # needed until we reach Meson 1.7.0
+  patch -Np1 < "$srcdir/0001-meson-support-1.4-without-mangohud-next.patch"
+
   # meson subprojects
-  ln -sfv "$srcdir/imgui-1.89.9" subprojects
+  ln -sfnv "$srcdir/imgui-1.91.6" subprojects/imgui-1.91.6
+  cp -rv subprojects/packagefiles/imgui-1.91.6/. subprojects/imgui-1.91.6/
   ln -sfv "$srcdir/implot-0.16" subprojects
-  ln -sfv "$srcdir/Vulkan-Headers-1.2.158" subprojects
+  ln -sfnv "$srcdir/Vulkan-Headers-1.4.346" subprojects/Vulkan-Headers-1.4.346
+  cp -rv subprojects/packagefiles/vulkan-headers/. subprojects/Vulkan-Headers-1.4.346/
+  ln -sfnv "$srcdir/Vulkan-Utility-Libraries-1.4.346" subprojects/Vulkan-Utility-Libraries-1.4.346
+  cp -rv subprojects/packagefiles/vulkan-utility-libraries/. subprojects/Vulkan-Utility-Libraries-1.4.346/
 }
 
 build() {
@@ -90,6 +104,7 @@ build() {
     -D with_nvml=disabled
     -D tests=disabled
     -D with_fex=true
+    -D with_mangohud_next=false
   )
 
   arch-meson mangohud build64 "${meson_options[@]}"
