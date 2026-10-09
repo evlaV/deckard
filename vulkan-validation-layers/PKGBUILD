@@ -26,6 +26,8 @@ makedepends=(
   vulkan-icd-loader
   vulkan-utility-libraries
   wayland
+  'python>=3.13'
+  'python<3.15'
 )
 options=(
   # https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/5994
@@ -33,7 +35,7 @@ options=(
 )
 groups=(vulkan-devel)
 source=("${_vulkan_validation_layers_url}")
-b2sums=('d37ed99b0028d59d2b5567cd3feac23831bef7f38b6414d22496ad1405b42c33a86493ec5695c2b3f1c16030bd4b7ebfce0fc68ae7ae82e7a8ffec02b0a1438e')
+b2sums=('c7425c08f9bed5c06cae1141c6cc4fa3ffaf87cefa88823d7f525014a532e33474b14fbecfe5e8f5393ea83e9d2b32fa80148e079693ef007c06126b2563d605')
 
 
 build() {
