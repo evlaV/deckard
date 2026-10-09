@@ -28,12 +28,14 @@ makedepends=(
   valijson
   vulkan-headers
   vulkan-utility-libraries
+  'python>=3.13'
+  'python<3.15'
 )
 groups=(vulkan-devel)
 source=(
   "LunarG-VulkanTools::${_lunarg_vulkan_tools_url}"
 )
-b2sums=('d39167750d35cb60a19f84edd274e12846b14f5cb635266c76de67a48e3ca2278d807f9c9db52c5ebbad38d5ea75ccf3ee8878e307c2f2c85f948f031fb35778')
+b2sums=('74879e302f306d12b83f649727f1d61c40710d0168ddaa34e4ba49bba9f098b655f70a9af94a6918032d5f82e9e00fc86447e5ab50a5d8c630fbcb857bf8320a')
 
 build() {
   local cmake_options=(

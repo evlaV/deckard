@@ -6,7 +6,7 @@
 _pkgname=xorgxrdp
 pkgname=xorgxrdp-glamor
 pkgver=0.10.5
-pkgrel=1.1
+pkgrel=1.3
 pkgdesc="Xorg drivers for xrdp, with glamor enabled. Only works on Intel and AMD GPUs."
 arch=('i686' 'x86_64' 'armv6h' 'armv7l' 'aarch64')
 url="https://github.com/neutrinolabs/xorgxrdp"

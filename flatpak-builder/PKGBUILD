@@ -2,7 +2,7 @@
 
 pkgname=flatpak-builder
 pkgver=1.4.10
-pkgrel=2
+pkgrel=4
 pkgdesc="Tool to build flatpaks from source"
 url="https://flatpak.org"
 arch=(aarch64)

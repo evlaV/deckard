@@ -1,0 +1,24 @@
+pkgname=gpu-ratemeter
+_commit=71f0e572255e9553e3531fd73043ed485fcaabcd
+pkgver=0.1+git${_commit:0:8}
+pkgrel=3
+pkgdesc="Command-line GPU microbenchmark"
+arch=('aarch64')
+url="https://gitlab.freedesktop.org/mesa/gpu-ratemeter"
+license=('MIT')
+depends=('libglvnd' 'libpng' 'shaderc' 'vulkan-icd-loader')
+makedepends=('cmake' 'gcc' 'git' 'meson' 'ninja' 'pkgconf' 'vulkan-headers' 'vulkan-utility-libraries')
+# Upstream: https://gitlab.freedesktop.org/mesa/gpu-ratemeter.git
+source=("${pkgname}::git+https://gitlab.freedesktop.org/Danil/gpu-ratemeter.git#commit=${_commit}")
+sha256sums=('SKIP')
+
+build() {
+    arch-meson "$pkgname" build --buildtype=release
+    ninja -C build
+}
+
+package() {
+    install -Dm755 "$srcdir/build/gpu-ratemeter" "$pkgdir/usr/bin/gpu-ratemeter"
+    install -Dm644 "$srcdir/$pkgname/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -Dm644 "$srcdir/$pkgname/README.md" "$pkgdir/usr/share/doc/$pkgname/README.md"
+}
