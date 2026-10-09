@@ -1,0 +1,24 @@
+source ../gfxreconstruct/gfxreconstruct_common.pkgbuild
+pkgname=gfxreconstruct
+depends=(python zlib lz4 zstd gcc-libs glibc)
+makedepends=(cmake git ninja xcb-util-keysyms libx11 libxcb wayland libxrandr)
+
+build() {
+  cmake -B build -S "gfxreconstruct" -Wno-dev \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DBUILD_WITH_SYSTEM_JSONCPP=OFF
+
+  cmake --build build
+}
+
+package() {
+  DESTDIR="${pkgdir}" cmake --install build
+  install -D gfxreconstruct/LICENSE.md -t "${pkgdir}/usr/share/licenses/${pkgname}"
+
+  # 'Remove .py file extension from files that are going to /usr/bin/'
+  for f in $pkgdir/usr/bin/*.py; do
+    mv -v $f ${f%.py}
+  done
+}
+

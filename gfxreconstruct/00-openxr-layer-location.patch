@@ -1,0 +1,24 @@
+commit a442cf2ce972814b3a17d90d3f257794c3930c9e
+Author: Elliot Saba <sabae@valvesoftware.com>
+Date:   Tue Oct 6 15:35:20 2026 -0700
+
+    Install OpenXR layer's JSON manifest in correct path on Unix
+    
+    According to [0], this is the correct path for a JSON manifest for an
+    OpenXR layer on unix-like operating systems.
+    
+    [0] https://registry.khronos.org/OpenXR/specs/1.1/loader.html#linux-manifest-search-paths
+
+diff --git a/layer/CMakeLists.txt b/layer/CMakeLists.txt
+index 554caa42..9111a5d8 100644
+--- a/layer/CMakeLists.txt
++++ b/layer/CMakeLists.txt
+@@ -153,7 +153,7 @@ if (GFXRECON_ENABLE_VULKAN)
+     if (UNIX)
+         install(FILES $<TARGET_FILE_DIR:VkLayer_gfxreconstruct>/staging-json/VkLayer_gfxreconstruct.json DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/vulkan/explicit_layer.d)
+         if (OPENXR_SUPPORT_ENABLED)
+-            install(FILES $<TARGET_FILE_DIR:VkLayer_gfxreconstruct>/staging-json/XrLayer_gfxreconstruct.json DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/openxr/1/api_layers/explicit_layer.d)
++            install(FILES $<TARGET_FILE_DIR:VkLayer_gfxreconstruct>/staging-json/XrLayer_gfxreconstruct.json DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/openxr/1/api_layers/explicit.d)
+         endif()
+     else()
+         install(FILES $<TARGET_FILE_DIR:VkLayer_gfxreconstruct>/VkLayer_gfxreconstruct.json DESTINATION ${CMAKE_INSTALL_BINDIR})
