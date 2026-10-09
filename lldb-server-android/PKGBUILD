@@ -1,0 +1,74 @@
+# Maintainer: Evangelos Foutras <foutrelis@archlinux.org>
+# Contributor: Jan "heftig" Steffens <jan.steffens@gmail.com>
+
+# Holo: Mostly untouched PKGBUILD from upstream. Necessary only until the monorepo
+#  advances further and starts to provide lldb 19.1.7+.
+# Holo: explicitly depend on the correct version of llvm,
+#  to ensure the CI doesn't build lldb against the old llvm
+# Holo: split PKGBUILD to share sources with android build.
+
+pkgver=19.1.7
+pkgrel=4
+pkgdesc="Next generation, high-performance debugger"
+arch=('x86_64' 'aarch64')
+url="https://lldb.llvm.org/"
+license=('Apache-2.0 WITH LLVM-exception')
+depends=("llvm-libs>=${pkgver}" 'clang' 'gcc-libs' 'zlib' 'xz' 'libedit' 'ncurses'
+         'libxml2' 'python')
+makedepends=("llvm>=${pkgver}" 'cmake' 'ninja' 'swig' 'python-sphinx')
+_source_base=https://github.com/llvm/llvm-project/releases/download/llvmorg-$pkgver
+validpgpkeys=('474E22316ABF4785A88C6E8EA2C794A986419D8A'  # Tom Stellard <tstellar@redhat.com>
+              'D574BD5D1D0E98895E3BF90044F2485E45D59042') # Tobias Hieta <tobias@hieta.se>
+
+pkgname=lldb-server-android
+source=($_source_base/llvm-project-$pkgver.src.tar.xz{,.sig})
+
+sha256sums=('82401fea7b79d0078043f7598b835284d6650a75b93e64b6f761ea7b63097501'
+            'SKIP')
+prepare() {
+  cd llvm-project-$pkgver.src/llvm
+  mkdir build
+}
+
+build() {
+  export NDK_VERSION=25.2.9519653
+  export ANDROID_NDK_HOME=/opt/android/ndk/$NDK_VERSION
+  export ANDROID_SDK_ROOT=/opt/android
+  export PATH=$ANDROID_SDK_ROOT/build-tools/$NDK_VERSION:$PATH
+  export PATH=$ANDROID_SDK_ROOT/cmake/3.22.1/bin:$PATH
+
+  # Prevent cmake from using host flags.
+  export CFLAGS=
+  export CXXFLAGS=
+  export CPPFLAGS=
+
+  cd llvm-project-$pkgver.src/llvm/build
+
+  # Build only minimal debug info to reduce size
+  CFLAGS=${CFLAGS/-g /-g1 }
+  CXXFLAGS=${CXXFLAGS/-g /-g1 }
+
+  local cmake_args=(
+    -G Ninja
+    -DCMAKE_BUILD_TYPE=Release
+    -DLLVM_ENABLE_PROJECTS="clang;lldb"
+    -DLLVM_TARGETS_TO_BUILD="AArch64"
+    -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake
+    -DLLVM_HOST_TRIPLE=aarch64-unknown-linux-android
+    -DANDROID_ABI=arm64-v8a
+    -DANDROID_PLATFORM=android-30
+    -DANDROID_ALLOW_UNDEFINED_SYMBOLS=On
+    -DLLVM_INCLUDE_TOOLS=ON
+  )
+  cmake .. "${cmake_args[@]}"
+  ninja lldb-server
+}
+
+package() {
+  cd llvm-project-$pkgver.src/llvm/build
+
+  mkdir -p $pkgdir/usr/share/guestos/android/vendor/bin/
+  install -TDm755 bin/lldb-server $pkgdir/usr/share/guestos/android/vendor/bin/lldb-server
+}
+
+# vim:set ts=2 sw=2 et:

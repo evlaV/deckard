@@ -1,0 +1,26 @@
+#!/bin/bash
+
+set -euo pipefail
+
+source /usr/lib/steamos/gamescope-env-list
+
+dbus-update-activation-environment "${gamescope_inherit_vars[@]}"
+systemctl --user import-environment "${gamescope_inherit_vars[@]}"
+
+# Allow anyone to connect to this guy
+xhost +
+
+# Set scale to 1.5x (our canonical SteamVR display scale)
+# with 96 * 1.5x DPI in Xft.
+echo 'Xft.dpi: 144' | xrdb -merge
+
+export NOTIFY_SOCKET="$GAMESCOPE_READY_NOTIFY_SOCKET"
+
+# Notify we are ready to launch subsequent services
+systemd-notify --ready
+
+# If we're given an argument, wait for it to exit
+WATCH_SERVICE="${1:-}"
+if [[ -n "${WATCH_SERVICE}" ]]; then
+    systemctl --user start --wait "${WATCH_SERVICE}"
+fi

@@ -1,0 +1,140 @@
+#!/bin/bash
+
+# Create run directory file for startup and stats sockets
+#   shellcheck disable=SC2030 # (broken warning)
+tmpdir="$([[ -n ${XDG_RUNTIME_DIR+x} ]] && mktemp -p "$XDG_RUNTIME_DIR" -d -t gamescope.XXXXXXX)"
+stats="${tmpdir:+$tmpdir/stats.pipe}"
+# Fail early if we don't have a proper runtime directory setup
+#   shellcheck disable=SC2031 # (broken warning)
+if [[ -z $tmpdir || -z ${XDG_RUNTIME_DIR+x} ]]; then
+  echo >&2 "!! Failed to find run directory in which to create stats session sockets (is \$XDG_RUNTIME_DIR set?)"
+  exit 0
+fi
+
+
+# Get free space of our home, measured in megabytes
+free_disk_space_megs=$(df "${HOME}" --output=avail -B$((1024*1024)) | sed -n '2 p' | xargs)
+minimum_free_disk_space_needed_megs=500
+
+if [[ "$free_disk_space_megs" -lt "$minimum_free_disk_space_needed_megs" ]]; then
+  echo >&2 "gamescope-session: not enough disk space to proceed, trying to find game to delete"
+
+  find ~/.local/share/Steam/steamapps/common/ -mindepth 1 -maxdepth 1 -type d -printf "%T@ %p\0" | sort -n -z | while IFS= read -r -d $'\0' line; do
+    game_folder=${line#* }
+
+    [[ -d "$game_folder" ]] || continue
+    acf=$(grep -F -- "$(basename -- "$game_folder")" ~/.local/share/Steam/steamapps/*.acf | grep \"installdir\" | cut -d: -f1)
+    [[ -e "$acf" ]] || continue
+
+    echo >&2 "gamescope-session: deleting $(basename "$game_folder")"
+
+    appid=$(basename "$acf" | cut -d_ -f2 | cut -d. -f1)
+
+    # TODO leave a note for Steam to display UI to explain what happened, if this logic stays
+    # intentionally leave compatdata; could be unclouded save files there
+    rm -rf --one-file-system -- "$game_folder" "$acf" ~/.local/share/Steam/steamapps/shadercache/"$appid"
+
+    free_disk_space_megs=$(df ~/ --output=avail -B1048576 | sed -n '2 p' | xargs)
+    [[ "$free_disk_space_megs" -lt "$minimum_free_disk_space_needed_megs" ]] || break
+  done
+fi
+
+export GAMESCOPE_STATS="$stats"
+mkfifo -- "$stats"
+
+# Attempt to claim global session if we're the first one running (e.g. /run/1000/gamescope-stats)
+linkname="gamescope-stats"
+#   shellcheck disable=SC2031 # (broken warning)
+sessionlink="${XDG_RUNTIME_DIR:+$XDG_RUNTIME_DIR/}${linkname}" # Account for XDG_RUNTIME_DIR="" (notfragileatall)
+lockfile="$sessionlink".lck
+exec 9>"$lockfile" # Keep as an fd such that the lock lasts as long as the session if it is taken
+if flock -n 9 && rm -f "$sessionlink" && ln -sf "$tmpdir" "$sessionlink"; then
+  # Took the lock.  Don't blow up if those commands fail, though.
+  echo >&2 "Claimed global gamescope stats session at \"$sessionlink\""
+else
+  echo >&2 "!! Failed to claim global gamescope stats session"
+fi
+
+export GAMESCOPE_READY_NOTIFY_SOCKET="$NOTIFY_SOCKET"
+# Don't allow Xwayland to notify readiness to us
+unset NOTIFY_SOCKET
+
+# Make sure we unset any lingering stuff as
+# we might confuse Gamescope/XWayland.
+source /usr/lib/steamos/gamescope-cleanup
+
+export XCURSOR_THEME=steam
+export GAMESCOPE_MANGOAPP_SOCKET_DISABLE=0
+
+# Set input method modules for Qt/GTK that will show the Steam keyboard
+#export QT_IM_MODULE=steam
+#export GTK_IM_MODULE=Steam
+
+# misyl: For now, default to xim here, as the Steam IM modules result in double presses
+# due to the filter logic behaving slightly weird...
+# ... and we need to set something or some other funky module takes priority and starts
+# messing with our keymap.
+#
+# -> https://github.com/valve-project/steam-qt-keyboard-plugin/blob/master/gtk3/steam-imcontext-gtk.c#L129
+export QT_IM_MODULE=xim
+export GTK_IM_MODULE=xim
+
+# Make Qt apps use the styling and behaviour of the desktop session
+# This fixes some missing icons and unreadable text with Qt desktop apps in gamescope
+export QT_QPA_PLATFORMTHEME=kde
+
+GAMESCOPE_ARGS=(
+  --allow-deferred-backend
+  --backend openvr
+  -T "$stats"
+  --cursor-hotspot 5,3 --cursor /usr/share/holo/holo-cursor.png
+  --cursor-scale-height 720
+  --default-touch-mode 4
+  --fade-out-duration 200
+  --framerate-limit 0
+  --hide-cursor-delay 3000
+  --max-scale 2
+  --vr-overlay-enable-click-stabilization
+  --vr-overlay-enable-control-bar
+  --vr-overlay-enable-control-bar-keyboard
+  --vr-overlay-icon /usr/share/steamos/steam_icon.png
+  --vr-overlay-physical-width 2.67
+  --vr-overlay-show-immediately
+  --vr-session-manager
+  --xwayland-count 2
+)
+
+# Use this to allow a single `gamescope-session.service` to provide both Steam and Bare sessions
+GAMESCOPE_SESSION_TARGET="${GAMESCOPE_SESSION_TARGET:-gamescope-session.target}"
+if [[ "${GAMESCOPE_SESSION_TARGET}" == "gamescope-session.target" ]]; then
+  GAMESCOPE_ARGS+=(
+    --nested-width 1280
+    --nested-height 720
+    --output-width 1920
+    --output-height 1080
+    --keep-alive
+    --mangoapp
+    --steam
+    --virtual-connector-strategy PerAppId
+    --vr-overlay-key valve.steam.gamepadui.fallback
+    --vr-app-overlay-key valve.steam.desktopgame
+  )
+else
+  # Allow environment variables to modify our overlay key
+  GAMESCOPE_OVERLAY_KEY="${GAMESCOPE_OVERLAY_KEY:-valve.plasma.desktopmode}"
+  GAMESCOPE_ARGS+=(
+    --nested-width 1920
+    --nested-height 1080
+    --output-width 1920
+    --output-height 1080
+    --vr-overlay-key "${GAMESCOPE_OVERLAY_KEY}"
+    --xwayland-force-touch-pointer-emulation
+  )
+
+  if [[ "${GAMESCOPE_SESSION_TARGET}" == "plasma-session.target" ]]; then
+    WATCH_SERVICE="steamvr-plasma.service"
+  fi
+fi
+
+exec gamescope "${GAMESCOPE_ARGS[@]}" -- /usr/lib/steamos/gamescope-onready ${WATCH_SERVICE:-}
+

@@ -1,0 +1,17 @@
+[Unit]
+Description=Gamescope VR Session
+Requires=graphical-session.target
+BindsTo=graphical-session.target
+After=graphical-session.target
+PropagatesStopTo=graphical-session.target
+
+Requires=gamescope-session.service
+BindsTo=gamescope-session.service
+
+Wants=steamvr.service
+Wants=steamvr-logs.service
+Wants=steamvr-proxmicmute.service
+Wants=steamvr-v4l2cam.service
+Wants=steam.service
+Wants=steam-notif-daemon.service
+Wants=ibus-gamescope.service
