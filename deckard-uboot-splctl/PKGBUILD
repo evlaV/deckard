@@ -1,0 +1,20 @@
+# Maintainer: Gabe Rowe <gaber@valvesoftware.com>
+pkgname=deckard-uboot-splctl
+pkgver=20260128.3
+pkgrel=6
+arch=('aarch64')
+license=('GPL-2.0+')
+pkgdesc="Deckard second-stage bootloader controller"
+url="https://github.com/evlav/deckard-uboot-splctl/-/tree/${pkgver}"
+depends=('glibc')
+sha512sums=('SKIP')
+makedepends=('git' 'gcc')
+source=("git+https://github.com/evlav/deckard-uboot-splctl.git#tag=${pkgver}")
+
+build() {
+  make -C ${pkgname}
+}
+
+package() {
+  make -C ${pkgname} install DESTDIR=${pkgdir}
+}
