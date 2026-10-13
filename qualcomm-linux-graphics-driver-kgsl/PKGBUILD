@@ -1,0 +1,35 @@
+# Maintainer: Gabe Rowe <gaber@valvesoftware.com>
+
+pkgname=qualcomm-linux-graphics-driver-kgsl
+_srctag=20260908.2
+pkgver=${_srctag//-/.}
+pkgrel=5
+arch=('any')
+license=('Apache-2.0')
+pkgdesc="Qualcomm graphics driver"
+url='https://github.com/evlav/qualcomm-linux-graphics-driver-kgsl/-/tree/$_srctag'
+depends=()
+sha512sums=('6e3c8392200ef2e7f57cccf772a70193b5d1c81801e8cc9ed54b6c1b46b7206828a714e43ba2009817a8b0a9d990506229d38b08528dbbacec48b5fccae4c86c')
+makedepends=('git' 'rsync' 'openssh' 'mesa' 'vulkan-headers' 'vulkan-icd-loader' 'wayland-protocols' 'patchelf')
+options=(
+    '!strip'
+    '!debug'
+)
+source=("git+https://github.com/evlav/qualcomm-linux-graphics-driver-kgsl.git#tag=$_srctag")
+
+build()
+{
+    cd ${srcdir}/${pkgname}
+    ./build_package.sh
+
+    #create tmpfiles dropin file that creates a symlink for /dev/kgsl-3d0
+    mkdir -p install/usr/lib/tmpfiles.d/
+    echo "L /dev/kgsl-3d0 - - - - /dev/dri/renderD128" > install/usr/lib/tmpfiles.d/kgsl.conf
+
+    ls -alR install
+}
+
+package() {
+    rsync -a "${srcdir}"/${pkgname}/install/* "${pkgdir}"
+}
+
