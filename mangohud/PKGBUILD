@@ -2,8 +2,8 @@
 # Contributor: Emil Velikov <emil.l.velikov@gmail.com>
 
 pkgname=('mangohud')
-_commit=e5d31119b521775de01ec41154c3ddb0a4c8c0cb
-pkgver=0.8.4.r179.ge5d31119
+_commit=e1430abaa024c57624661b99314ba8f2d4c06d03
+pkgver=0.8.4.r184.ge1430aba
 pkgrel=1
 epoch=1
 pkgdesc="Vulkan and OpenGL overlay to display performance information"
@@ -19,6 +19,7 @@ makedepends=(
   glslang
   libglvnd
   libx11
+  libxi
   libxnvctrl
   libxrandr
   'meson>=1.4.0'
@@ -50,7 +51,14 @@ source=(
   "implot-v0.16-1-wrap.zip::https://wrapdb.mesonbuild.com/v2/implot_0.16-1/get_patch"
   "vulkan-headers-1.4.346.tar.gz::https://github.com/KhronosGroup/Vulkan-Headers/archive/v1.4.346.tar.gz"
   "vulkan-utility-libraries-1.4.346.tar.gz::https://github.com/KhronosGroup/Vulkan-Utility-Libraries/archive/v1.4.346.tar.gz"
+  # needed until we reach Meson 1.7.0
   "0001-meson-support-1.4-without-mangohud-next.patch"
+  # cgroup patches (https://github.com/flightlessmango/MangoHud/pull/2176)
+  "0001-memory-add-cgroup_mem-from-the-app-s-systemd-cgroup.patch"
+  "0002-params-show-cgroup-memory-on-steam-frame.patch"
+  # battery + charging state patches (https://github.com/flightlessmango/MangoHud/pull/2175)
+  "0001-battery-use-deckardcharger-status-on-steam-frame.patch"
+  "0002-battery-only-count-discharging-batteries-toward-drai.patch"
 )
 
 sha256sums=('SKIP'
@@ -59,7 +67,11 @@ sha256sums=('SKIP'
             '1c6b1462066a5452fa50c1da1dd47fed841f28232972c82d778f2962936568c7'
             '5bb77f5d7b460e255a9e51affc00d64354986b55cf577d8eab28529cad01fc80'
             '372eb525103ecb4e3a04d030b2a9778ebc67853bbdc82ce6747de3757d432ad9'
-            '857f1f8c376ffeb33de803cce07d81be7f6c924666aaf5000f60b75630bb55f1')
+            '857f1f8c376ffeb33de803cce07d81be7f6c924666aaf5000f60b75630bb55f1'
+            '0fc376e1f01402730bd9239373d9d54e8044294dc5faefe32cb3d39ddbaa428c'
+            'f640e446f0bce0792a696d6aade0668742b36621798c5ab93b3b3c222d35b0ec'
+            'f7bcfa96748b3305b2f89800226cd4e79998ff8c3b06d0fc76ae594bd1656ddf'
+            '91ff7fd2f4a0e1cc49b4bc97426fd8975006ad1d968e4ce947335f8f25f9855d')
 
 # Get `download_git` available for use
 source /usr/share/makepkg/util/source.sh
@@ -81,8 +93,14 @@ pkgver() {
 prepare() {
   cd mangohud
 
-  # needed until we reach Meson 1.7.0
-  patch -Np1 < "$srcdir/0001-meson-support-1.4-without-mangohud-next.patch"
+  local src
+  for src in "${source[@]}"; do
+    src="${src%%::*}"
+    src="${src##*/}"
+    [[ $src = *.patch ]] || continue
+    echo "Applying patch $src..."
+    patch -Np1 < "../$src"
+  done
 
   # meson subprojects
   ln -sfnv "$srcdir/imgui-1.91.6" subprojects/imgui-1.91.6

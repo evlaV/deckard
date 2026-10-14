@@ -1,0 +1,246 @@
+From 5f0f6c7783cf47e953261d3f3503fb786f20bf88 Mon Sep 17 00:00:00 2001
+From: Matthew Schwartz <matthew.schwartz@linux.dev>
+Date: Tue, 13 Oct 2026 23:34:27 -0700
+Subject: [PATCH 1/2] memory: add cgroup_mem from the app's systemd cgroup
+
+Desktops and launchers following systemd's app unit convention run each
+app in its own app-*.scope or app-*.service under app.slice. A launcher
+can do the same per game, so the unit holds the game and any helper
+processes it starts.
+
+Add a CGROUP row showing anon + shmem from the memory.stat of the cgroup
+the app runs in, when that cgroup is inside such a unit. It covers
+everything in the cgroup, so a launcher that shares the app's unit is
+included. It leaves out page cache, and counts GPU buffers only on
+drivers that charge them to the cgroup as shmem (msm, i915 iGPU,
+panfrost/panthor, v3d), not TTM ones (amdgpu, xe, nouveau).
+
+Services under app.slice outside the convention are skipped. procmem
+and the process_rss log column are unchanged. Off in preset 4 like
+procmem.
+---
+ README.md              |  1 +
+ data/MangoHud.conf     |  3 +++
+ src/hud_elements.cpp   | 23 ++++++++++++++++++
+ src/hud_elements.h     |  1 +
+ src/memory.cpp         | 53 ++++++++++++++++++++++++++++++++++++++++++
+ src/memory.h           |  2 ++
+ src/overlay.cpp        |  2 ++
+ src/overlay_params.cpp |  1 +
+ src/overlay_params.h   |  1 +
+ 9 files changed, 87 insertions(+)
+
+diff --git a/README.md b/README.md
+index 1af8694..ca05582 100644
+--- a/README.md
++++ b/README.md
+@@ -354,6 +354,7 @@ Parameters that are enabled by default have to be explicitly disabled. These (cu
+ | `bicubic`                          | Force bicubic filtering                                                               |
+ | `blacklist`                        | Add a program to the blacklist. e.g `blacklist=vkcube,WatchDogs2.exe`                 |
+ | `cellpadding_y`                    | Set the vertical cellpadding, default is `-0.085` |
++| `cgroup_mem`                       | Display memory used by the app's cgroup when it runs in a systemd app unit (`app.slice/app-*`). It includes everything in that cgroup, such as the launcher if they share one: anon + shmem, which includes GPU buffers on shmem-backed drivers (e.g. msm, i915 iGPU) but not TTM ones (e.g. amdgpu) |
+ | `control=`                         | Sets up a unix socket with a specific name that can be connected to with mangohud-control.<br>I.e. `control=mangohud` or `control=mangohud-%p` (`%p` will be replaced by process id)    |
+ | `core_load_change`                 | Change the colors of cpu core loads, uses the same data from `cpu_load_value` and `cpu_load_change` |
+ | `core_load`                        | Display load & frequency per core                                                     |
+diff --git a/data/MangoHud.conf b/data/MangoHud.conf
+index c2d0851..6efcc0e 100644
+--- a/data/MangoHud.conf
++++ b/data/MangoHud.conf
+@@ -142,6 +142,9 @@ cpu_stats
+ # procmem_virt
+ # proc_vram
+ 
++### Display memory used by the app's cgroup, when it runs in a systemd app unit
++# cgroup_mem
++
+ ### Display battery information
+ # battery
+ # battery_icon
+diff --git a/src/hud_elements.cpp b/src/hud_elements.cpp
+index d8cc88f..530d4d1 100644
+--- a/src/hud_elements.cpp
++++ b/src/hud_elements.cpp
+@@ -832,6 +832,26 @@ void HudElements::procmem()
+ #endif
+ }
+ 
++void HudElements::cgroup_mem()
++{
++#ifdef __linux__
++    const char* unit = nullptr;
++    uint64_t used = cgroup_mem_used;
++
++    if (!HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_cgroup_mem] || !used)
++        return;
++
++    ImguiNextColumnFirstItem();
++    HUDElements.TextColored(HUDElements.colors.ram, "CGROUP");
++    ImguiNextColumnOrNewRow();
++    right_aligned_text(HUDElements.colors.text, HUDElements.ralign_width, "%.1f", format_units(used, unit));
++    ImGui::SameLine(0, 1.0f);
++    ImGui::PushFont(HUDElements.sw_stats->font_small);
++    HUDElements.TextColored(HUDElements.colors.text, "%s", unit);
++    ImGui::PopFont();
++#endif
++}
++
+ void HudElements::fps(){
+     if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_fps] && !HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_fps_only]){
+         ImguiNextColumnFirstItem();
+@@ -1975,6 +1995,7 @@ void HudElements::sort_elements(const std::pair<std::string, std::string>& optio
+         {"arch", {arch}},
+         {"wine", {wine}},
+         {"procmem", {procmem}},
++        {"cgroup_mem", {cgroup_mem}},
+         {"gamemode", {gamemode}},
+         {"vkbasalt", {vkbasalt}},
+         {"engine_version", {engine_version}},
+@@ -2072,6 +2093,8 @@ void HudElements::legacy_elements(const overlay_params* temp_params){
+         ordered_functions.push_back({ram, "ram", value});
+     if (temp_params->enabled[OVERLAY_PARAM_ENABLED_procmem])
+         ordered_functions.push_back({procmem, "procmem", value});
++    if (temp_params->enabled[OVERLAY_PARAM_ENABLED_cgroup_mem])
++        ordered_functions.push_back({cgroup_mem, "cgroup_mem", value});
+     if (!temp_params->network.empty())
+         ordered_functions.push_back({network, "network", value});
+     if (temp_params->enabled[OVERLAY_PARAM_ENABLED_battery])
+diff --git a/src/hud_elements.h b/src/hud_elements.h
+index 2fff8a7..770d8e1 100644
+--- a/src/hud_elements.h
++++ b/src/hud_elements.h
+@@ -87,6 +87,7 @@ class HudElements{
+         static void proc_vram();
+         static void ram();
+         static void procmem();
++        static void cgroup_mem();
+         static void fps();
+         static void engine_version();
+         static void gpu_name();
+diff --git a/src/memory.cpp b/src/memory.cpp
+index 1546c94..0a19f77 100644
+--- a/src/memory.cpp
++++ b/src/memory.cpp
+@@ -9,10 +9,12 @@
+ #include "memory.h"
+ #include "file_utils.h"
+ #include "hud_elements.h"
++#include "string_utils.h"
+ 
+ float memused, memmax, swapused;
+ int mem_temp = -1;
+ uint64_t proc_mem_resident, proc_mem_shared, proc_mem_virt;
++uint64_t cgroup_mem_used;
+ 
+ void update_meminfo() {
+     std::ifstream file("/proc/meminfo");
+@@ -105,3 +107,54 @@ void update_procmem()
+     proc_mem_resident = meminfo[1];
+     proc_mem_shared = meminfo[2];
+ }
++
++// systemd app units, app.slice/app-*.scope or app-*.service
++static std::string app_cgroup(const std::string& proc)
++{
++    std::ifstream file(proc + "/cgroup");
++
++    for (std::string line; std::getline(file, line);) {
++        if (!starts_with(line, "0::") || ends_with(line, " (deleted)"))
++            continue;
++
++        auto path = line.substr(3);
++        if (path.find("/app.slice/app-") != std::string::npos)
++            return "/sys/fs/cgroup" + path;
++    }
++
++    return {};
++}
++
++// anon + shmem: what reclaim can't drop, plus GPU buffers on shmem-backed drivers
++static uint64_t read_cgroup_mem(const std::string& cgroup)
++{
++    std::ifstream file(cgroup + "/memory.stat");
++
++    uint64_t anon = 0, shmem = 0;
++    std::string key;
++    uint64_t val;
++    while (file >> key >> val) {
++        if (key == "anon")
++            anon = val;
++        else if (key == "shmem")
++            shmem = val;
++    }
++
++    return anon + shmem;
++}
++
++void update_cgroup_mem()
++{
++    static std::string cgroup;
++
++    auto gs_pid = HUDElements.g_gamescopePid;
++    std::string proc = "/proc/" + (gs_pid < 1 ? std::string("self") : std::to_string(gs_pid));
++
++    // resolve every time, the process can move between cgroups
++    auto path = app_cgroup(proc);
++    if (!path.empty() && path != cgroup)
++        SPDLOG_DEBUG("cgroup memory from {}", path);
++    cgroup = path;
++
++    cgroup_mem_used = cgroup.empty() ? 0 : read_cgroup_mem(cgroup);
++}
+diff --git a/src/memory.h b/src/memory.h
+index c490b2b..65e84c1 100644
+--- a/src/memory.h
++++ b/src/memory.h
+@@ -7,9 +7,11 @@
+ extern float memused, memmax, swapused;
+ extern int mem_temp;
+ extern uint64_t proc_mem_resident, proc_mem_shared, proc_mem_virt;
++extern uint64_t cgroup_mem_used;
+ 
+ void update_meminfo();
+ void update_mem_temp();
+ void update_procmem();
++void update_cgroup_mem();
+ 
+ #endif //MANGOHUD_MEMORY_H
+diff --git a/src/overlay.cpp b/src/overlay.cpp
+index 76948d7..b5ff1dc 100644
+--- a/src/overlay.cpp
++++ b/src/overlay.cpp
+@@ -135,6 +135,8 @@ void update_hw_info(const struct overlay_params& params, uint32_t vendorID)
+       update_mem_temp();
+    if (real_params->enabled[OVERLAY_PARAM_ENABLED_procmem])
+       update_procmem();
++   if (real_params->enabled[OVERLAY_PARAM_ENABLED_cgroup_mem])
++      update_cgroup_mem();
+    if (real_params->enabled[OVERLAY_PARAM_ENABLED_io_read] || real_params->enabled[OVERLAY_PARAM_ENABLED_io_write])
+       getIoStats(g_io_stats);
+ #endif
+diff --git a/src/overlay_params.cpp b/src/overlay_params.cpp
+index 6c9324b..f89b0db 100644
+--- a/src/overlay_params.cpp
++++ b/src/overlay_params.cpp
+@@ -1378,6 +1378,7 @@ void presets(int preset, struct overlay_params *params, bool inherit) {
+          add_to_options(params, "present_mode", "0");
+          add_to_options(params, "proc_vram", "0");
+          add_to_options(params, "procmem", "0");
++         add_to_options(params, "cgroup_mem", "0");
+          add_to_options(params, "display_server", "0");
+          add_to_options(params, "gpu_efficiency", "0");
+          add_to_options(params, "cpu_efficiency", "0");
+diff --git a/src/overlay_params.h b/src/overlay_params.h
+index 0ff802c..a8b280c 100644
+--- a/src/overlay_params.h
++++ b/src/overlay_params.h
+@@ -58,6 +58,7 @@ struct Tracepoint;
+    OVERLAY_PARAM_BOOL(procmem)                       \
+    OVERLAY_PARAM_BOOL(procmem_shared)                \
+    OVERLAY_PARAM_BOOL(procmem_virt)                  \
++   OVERLAY_PARAM_BOOL(cgroup_mem)                    \
+    OVERLAY_PARAM_BOOL(time)                          \
+    OVERLAY_PARAM_BOOL(full)                          \
+    OVERLAY_PARAM_BOOL(read_cfg)                      \
+-- 
+2.56.0
+

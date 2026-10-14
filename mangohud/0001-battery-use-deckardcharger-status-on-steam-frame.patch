@@ -1,0 +1,43 @@
+From 16250f6e85aef4df08ade1aae6934d295dab906a Mon Sep 17 00:00:00 2001
+From: Matthew Schwartz <matthew.schwartz@linux.dev>
+Date: Tue, 13 Oct 2026 23:52:44 -0700
+Subject: [PATCH 1/2] battery: use deckardcharger status on steam frame
+
+The max1720x fuel gauge only knows its own SOC and average current, so
+while the charger holds the battery near full on AC its status flaps
+between Charging, Not charging and Discharging every few seconds, and
+the HUD flips between the plug icon and ~20W with a 28h estimate.
+deckardcharger publishes the combined status, so prefer it like we do
+for battery_percent.
+---
+ src/battery.cpp | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/src/battery.cpp b/src/battery.cpp
+index e87b2a6..9bc7fb8 100644
+--- a/src/battery.cpp
++++ b/src/battery.cpp
+@@ -136,6 +136,8 @@ static bool get_power_deckard(float& power) {
+ float BatteryStats::getPower() {
+     float power_w = 0.0f;
+     const bool deckard = fs::exists("/run/power-monitor/power/vph");
++    // the fuel gauge status flaps with the current sign while held near full
++    const std::string deckard_status = read_line("/run/deckardcharger/battery_status");
+ 
+     for (int i = 0; i < batt_count; i++) {
+         string syspath = battPath[i];
+@@ -145,9 +147,8 @@ float BatteryStats::getPower() {
+         string status = syspath + "/status";
+ 
+         {
+-            std::ifstream input(status);
+-            std::string line;
+-            if (std::getline(input, line)) {
++            std::string line = deckard_status.empty() ? read_line(status) : deckard_status;
++            if (!line.empty()) {
+                 current_status = line;
+                 state[i] = current_status;
+             }
+-- 
+2.56.0
+

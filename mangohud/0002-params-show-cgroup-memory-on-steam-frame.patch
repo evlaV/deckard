@@ -1,0 +1,46 @@
+From 41357415374b4be86ade06b55bd50ffeac111b0f Mon Sep 17 00:00:00 2001
+From: Matthew Schwartz <matthew.schwartz@linux.dev>
+Date: Tue, 13 Oct 2026 23:34:39 -0700
+Subject: [PATCH 2/2] params: show cgroup memory on steam frame
+
+msm charges GPU buffers to the game's cgroup as shmem, so on Steam Frame
+cgroup_mem covers both CPU and GPU memory the game holds in its shared
+RAM.
+---
+ src/overlay_params.cpp | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/src/overlay_params.cpp b/src/overlay_params.cpp
+index f89b0db..27dbf25 100644
+--- a/src/overlay_params.cpp
++++ b/src/overlay_params.cpp
+@@ -1295,6 +1295,18 @@ void add_to_options(struct overlay_params *params, std::string option, std::stri
+    params->options[option] = value;
+ }
+ 
++// override an earlier option instead of adding a second HUD element for it
++static void set_option(struct overlay_params *params, const std::string& option, const std::string& value){
++   for (auto& o : HUDElements.options) {
++      if (o.first == option) {
++         o.second = value;
++         params->options[option] = value;
++         return;
++      }
++   }
++   add_to_options(params, option, value);
++}
++
+ void presets(int preset, struct overlay_params *params, bool inherit) {
+    if (!inherit && parse_preset_config(preset, params))
+          return;
+@@ -1422,6 +1434,7 @@ void presets(int preset, struct overlay_params *params, bool inherit) {
+       add_to_options(params, "network", "");
+       if (preset == 4) {
+          add_to_options(params, "ram_temp", "0");
++         set_option(params, "cgroup_mem", "1");
+ #ifdef HAVE_FEX
+          add_to_options(params, "fex_stats", "status+apptype+hotthreads+jitload+sigbus+smc+softfloat");
+ #endif
+-- 
+2.56.0
+

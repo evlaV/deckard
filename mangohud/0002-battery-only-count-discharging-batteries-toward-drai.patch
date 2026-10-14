@@ -1,0 +1,57 @@
+From 5acdb306ed0d641d8e8fc3179f966e6dc773ee31 Mon Sep 17 00:00:00 2001
+From: Matthew Schwartz <matthew.schwartz@linux.dev>
+Date: Tue, 13 Oct 2026 23:52:51 -0700
+Subject: [PATCH 2/2] battery: only count discharging batteries toward drain
+
+"Not charging" means external power is present but the battery isn't
+being charged, e.g. held at a charge limit, so showing a discharge rate
+and remaining time there is wrong. Idle batteries report it too, as the
+second battery on dual-battery laptops does while the first discharges,
+along with Full. So rather than returning 0 as soon as any battery isn't
+discharging, sum only the discharging ones and show the plug when none
+are.
+---
+ src/battery.cpp | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/src/battery.cpp b/src/battery.cpp
+index 9bc7fb8..b6b910a 100644
+--- a/src/battery.cpp
++++ b/src/battery.cpp
+@@ -138,6 +138,7 @@ float BatteryStats::getPower() {
+     const bool deckard = fs::exists("/run/power-monitor/power/vph");
+     // the fuel gauge status flaps with the current sign while held near full
+     const std::string deckard_status = read_line("/run/deckardcharger/battery_status");
++    bool discharging = false;
+ 
+     for (int i = 0; i < batt_count; i++) {
+         string syspath = battPath[i];
+@@ -154,11 +155,11 @@ float BatteryStats::getPower() {
+             }
+         }
+ 
+-        if (state[i] == "Charging" || state[i] == "Unknown" || state[i] == "Full") {
+-            // TODO if we have multiple batteries, we will return 0 if just one of them is charging
+-            return 0.0f;
+-        }
++        // idle batteries report Not charging or Full, e.g. on dual-battery laptops
++        if (state[i] != "Discharging")
++            continue;
+ 
++        discharging = true;
+         if (deckard)
+             continue;
+ 
+@@ -195,6 +196,9 @@ float BatteryStats::getPower() {
+         }
+     }
+ 
++    if (!discharging)
++        return 0.0f;
++
+     // Keep previous power on empty or invalid reads
+     if (deckard)
+         return get_power_deckard(power_w) ? power_w : current_watt;
+-- 
+2.56.0
+
