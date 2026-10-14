@@ -1,7 +1,7 @@
 # Maintainer: Gabe Rowe <gaber@valvesoftware.com>
 
 # This so that our kernel/module builds always happen in lockstep
-source ../linux-618-deckard/kernel_common.pkgbuild
+source ../linux-72-deckard/kernel_common.pkgbuild
 pkgbase=linux-tools
 pkgname=(
   'bootconfig'
@@ -18,7 +18,7 @@ pkgname=(
 if [[ "${CARCH}" == "x86_64" ]]; then
   pkgname+=( 'cpupower' 'turbostat' 'intel-speed-select' 'kcpuid' 'x86_energy_perf_policy' )
 fi
-pkgver="${_pkgver:-6.18.0}"
+pkgver="${_pkgver:-7.2.0}"
 pkgrel="${_pkgrel:-1}"
 license=('GPL2')
 arch=('x86_64' 'aarch64')
