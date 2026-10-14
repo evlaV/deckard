@@ -6,10 +6,10 @@
 # toolchain build order: linux-api-headers->glibc->binutils->gcc->glibc->binutils->gcc
 
 # This so that our kernel/module builds always happen in lockstep
-source ../linux-618-deckard/kernel_common.pkgbuild
+source ../linux-72-deckard/kernel_common.pkgbuild
 
 pkgname=linux-api-headers
-pkgver="${_pkgver:-6.18.0}"
+pkgver="${_pkgver:-7.2.0}"
 pkgrel="${_pkgrel:-1}"
 pkgdesc='Kernel headers sanitized for use in userspace'
 arch=(x86_64 aarch64)
