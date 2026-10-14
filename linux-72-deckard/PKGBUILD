@@ -48,6 +48,20 @@ export KBUILD_BUILD_HOST=archlinux
 export KBUILD_BUILD_USER=$pkgbase
 export KBUILD_BUILD_TIMESTAMP="$(date -Ru${SOURCE_DATE_EPOCH:+d @$SOURCE_DATE_EPOCH})"
 
+# Kernels to build, mapping each name to the config targets it is configured
+# with.  The `main` kernel is packaged as $pkgbase; every other kernel is
+# packaged as $pkgbase-<name>.  (`-g` because makepkg sources us from within
+# a function.)
+declare -gA _kernels=(
+  [main]="gabe_defconfig"
+  [hwdebug]="gabe_defconfig hwdebug.config"
+)
+
+# Usage: _kernel_suffix <kernel name>
+_kernel_suffix() {
+  [[ $1 == main ]] || echo "-$1"
+}
+
 prepare() {
   cd $_srcname
 
@@ -60,14 +74,26 @@ prepare() {
     echo "Applying patch $src..."
     patch -Np1 < "../$src"
   done
+
+  # Each extra kernel is built from its own copy of the tree so that all
+  # kernels can be packaged (including headers) from their in-tree outputs.
+  cd "$srcdir"
+  local kernel
+  for kernel in "${!_kernels[@]}"; do
+    [[ $kernel == main ]] && continue
+    rm -rf "$_srcname-$kernel"
+    cp -a "$_srcname" "$_srcname-$kernel"
+  done
 }
 
-build() {
-  cd $_srcname
-  echo "Setting config..."
-  make ARCH=arm64 gabe_defconfig
-  make ARCH=arm64 -s kernelrelease > version
-  echo "Kernel version $(<version)"
+# Usage: _build_kernel <kernel name>
+_build_kernel() {
+  local configs="${_kernels[$1]}"
+  pushd "$srcdir/$_srcname$(_kernel_suffix "$1")"
+
+  echo "Setting config for $1 kernel ($configs)..."
+  make ARCH=arm64 $configs
+
   BUILDOPTIONS=(
     ARCH=arm64
   )
@@ -79,6 +105,19 @@ build() {
   make "${BUILDOPTIONS[@]}" all
   #make -C tools/bpf/bpftool vmlinux.h feature-clang-bpf-co-re=1
   #make "${BUILDOPTIONS[@]}" htmldocs # Deckard: Don't build the docs
+
+  # query the release after building to pick up CONFIG_LOCALVERSION
+  make ARCH=arm64 -s kernelrelease > version
+  echo "Kernel version $(<version)"
+
+  popd
+}
+
+build() {
+  local kernel
+  for kernel in "${!_kernels[@]}"; do
+    _build_kernel "$kernel"
+  done
 }
 
 _package() {
@@ -104,7 +143,14 @@ _package() {
     wireguard-arch
   )
 
-  cd $_srcname
+  _install_kernel "$1"
+}
+
+# Usage: _install_kernel <kernel name>
+_install_kernel() {
+  local suffix=$(_kernel_suffix "$1")
+  local kname="$pkgbase$suffix"
+  cd "$srcdir/$_srcname$suffix"
   local modulesdir="$pkgdir/usr/lib/modules/$(<version)"
 
   echo "Installing boot image..."
@@ -112,14 +158,14 @@ _package() {
   ln -s "Image-$(<version)" "$pkgdir/boot/Image"
 
   # Used by mkinitcpio to name the kernel
-  echo "$pkgbase" | install -Dm644 /dev/stdin "$modulesdir/pkgbase"
+  echo "$kname" | install -Dm644 /dev/stdin "$modulesdir/pkgbase"
 
   # Render the install scriptlet that writes our mkinitcpio preset.  The
   # `true &&` hides the reassignment from makepkg's lint, which requires
   # `install` to exist before the build (and thus can't be the rendered file).
-  sed -e "s|%PKGBASE%|$pkgbase|g" -e "s|%KVER%|$(<version)|g" \
-    "$startdir/$install" > "$startdir/$pkgbase.install"
-  true && install="$pkgbase.install"
+  sed -e "s|%PKGBASE%|$kname|g" -e "s|%KVER%|$(<version)|g" \
+    "$startdir/$install" > "$startdir/$kname.install"
+  true && install="$kname.install"
 
   local maindtb="sm8650-mp.dtb"
   echo "Installing dtbs...( maindtb = $maindtb )"
@@ -140,7 +186,15 @@ _package-headers() {
   depends=(pahole)
   provides=("linux-deckard-headers=${pkgver}")
   conflicts=("linux-deckard-headers")
-  cd $_srcname
+
+  _install_headers "$1"
+}
+
+# Usage: _install_headers <kernel name>
+_install_headers() {
+  local suffix=$(_kernel_suffix "$1")
+  local kname="$pkgbase$suffix"
+  cd "$srcdir/$_srcname$suffix"
   local builddir="$pkgdir/usr/lib/modules/$(<version)/build"
 
   echo "Installing build files..."
@@ -215,7 +269,7 @@ _package-headers() {
 
   echo "Adding symlink..."
   mkdir -p "$pkgdir/usr/src"
-  ln -sr "$builddir" "$pkgdir/usr/src/$pkgbase"
+  ln -sr "$builddir" "$pkgdir/usr/src/$kname"
 }
 
 _package-docs() {
@@ -238,17 +292,16 @@ _package-docs() {
 }
 
 # Deckard: Don't package the docs
-#pkgname=(
-#  "$pkgbase"
-#  "$pkgbase-headers"
-#  "$pkgbase-docs"
-#)
-pkgname=("$pkgbase" "$pkgbase-headers")
-for _p in "${pkgname[@]}"; do
-  eval "package_$_p() {
-    $(declare -f "_package${_p#$pkgbase}")
-    _package${_p#$pkgbase}
-  }"
+pkgname=()
+for _k in "${!_kernels[@]}"; do
+  for _t in "" -headers; do
+    _p="$pkgbase$(_kernel_suffix "$_k")$_t"
+    pkgname+=("$_p")
+    eval "package_$_p() {
+      $(declare -f "_package$_t")
+      _package$_t $_k
+    }"
+  done
 done
 
 # vim:set ts=8 sts=2 sw=2 et:
