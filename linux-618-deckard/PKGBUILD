@@ -40,10 +40,14 @@ options=(
 )
 _srcname=archlinux-linux-deckard
 source=(
-  "$_srcname::git+https://github.com/evlav/deckard-linux.git#commit=$_commit"
+  "kernel_common.pkgbuild"
+  "$_srcname::git+https://github.com/evlav/deckard-linux-no-oopsies.git#commit=$_commit"
 )
 
-sha256sums=('SKIP')
+sha256sums=(
+  'SKIP'
+  'SKIP'
+)
 export KBUILD_BUILD_HOST=archlinux
 export KBUILD_BUILD_USER=$pkgbase
 export KBUILD_BUILD_TIMESTAMP="$(date -Ru${SOURCE_DATE_EPOCH:+d @$SOURCE_DATE_EPOCH})"
@@ -56,6 +60,11 @@ declare -gA _kernels=(
   [main]="gabe_defconfig"
   [hwdebug]="gabe_defconfig hwdebug.config"
 )
+declare -gA _kernel_extra_cmdlines=(
+  [main]=""
+  [hwdebug]="page_poison=1 page_owner=on no_hash_pointers kfence.sample_interval=10"
+)
+
 
 # Usage: _kernel_suffix <kernel name>
 _kernel_suffix() {
@@ -163,9 +172,12 @@ _install_kernel() {
   # Render the install scriptlet that writes our mkinitcpio preset.  The
   # `true &&` hides the reassignment from makepkg's lint, which requires
   # `install` to exist before the build (and thus can't be the rendered file).
-  sed -e "s|%PKGBASE%|$kname|g" -e "s|%KVER%|$(<version)|g" \
-    "$startdir/$install" > "$startdir/$kname.install"
-  true && install="$kname.install"
+  SED_OPTS=(
+    -e "s|%PKGBASE%|$kname|g"
+    -e "s|%KVER%|$(<version)|g"
+    -e "s|%EXTRA_CMDLINE%|${_kernel_extra_cmdlines[$1]}|g"
+  )
+  sed "${SED_OPTS[@]}" "$startdir/$install" > "$startdir/$kname.install"
 
   local maindtb="sm8650-mp.dtb"
   echo "Installing dtbs...( maindtb = $maindtb )"

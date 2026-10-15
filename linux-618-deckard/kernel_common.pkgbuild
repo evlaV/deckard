@@ -1,0 +1,4 @@
+# When you update these values, reset `_pkgrel` below to `1`
+_commit=29e952b28e50a98555a2e969a47125eb177797cf
+_pkgver=6.18.0+g${_commit:0:12}
+_pkgrel=4
