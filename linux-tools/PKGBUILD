@@ -46,7 +46,7 @@ makedepends+=('llvm' 'clang')
 # intel-speed-select
 makedepends+=('libnl')
 groups=("$pkgbase")
-source=("linux::git+https://github.com/evlav/deckard-linux.git#commit=$_commit"
+source=("linux::git+https://github.com/evlav/deckard-linux-no-oopsies.git#commit=$_commit"
         #"https://cdn.kernel.org/pub/linux/kernel/v6.x/patch-$pkgver.7.xz"
         'cpupower.default'
         'cpupower.systemd'
