@@ -16,7 +16,7 @@ options=('!strip' '!debug' '!lto')
 source=(
     "git+https://github.com/evlav/deckard-u-boot.git#tag=${_uboot_srctag}"
 )
-sha512sums=('da016ae2026902d748b9536e7b7dd9e3eeca032fac4cd4e178ff3267a08538336508a4ac312e13ec6cb1737a5382caf7dfa3113f17758a0012f43f392b8087c5')
+sha512sums=('SKIP')
 
 # Helper function to read a config variable from the u-boot configuration
 _UBOOT_CONFIG_NAME=sm8650-deckard_defconfig
