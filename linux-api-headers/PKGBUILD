@@ -17,7 +17,7 @@ url='https://www.gnu.org/software/libc'
 license=(GPL-2.0)
 makedepends=(rsync)
 source=(
-  linux-${pkgver}::git+https://github.com/evlav/deckard-linux.git#commit=$_commit
+  linux-${pkgver}::git+https://github.com/evlav/deckard-linux-no-oopsies.git#commit=$_commit
 )
 sha256sums=('SKIP')
 
