@@ -1,0 +1,6 @@
+post_install() {
+    depmod -a
+}
+post_upgrade() {
+    depmod -a
+}

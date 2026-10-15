@@ -1,0 +1,47 @@
+# Maintainer: Elliot Saba <sabae@valvesoftware.com>
+
+# This so that our kernel/module builds always happen in lockstep
+source ../linux-72-deckard/kernel_common.pkgbuild
+
+pkgname=linux-72-v4l2loopback-deckard
+_srctag=20251112.1
+#check linux-valve/Makefile for the kernel version
+# contructed from the version / patchlevel / sublevel / extraversion
+_kernel_release="7.2.0-g${_commit:0:12}"
+pkgver=${_srctag//-/.}+g${_commit:0:12}
+pkgrel="${_pkgrel}"
+arch=('aarch64')
+license=('GPL-2.0-only')
+pkgdesc="Deckard Hardware Support"
+url='https://github.com/evlav/deckard-v4l2loopback'
+depends=('glibc')
+makedepends=('git' 'gcc' 'linux-72-deckard-headers')
+provides=("linux-v4l2loopback-deckard=${pkgver}")
+conflicts=("linux-v4l2loopback-deckard")
+source=("git+https://github.com/evlav/deckard-v4l2loopback.git#tag=$_srctag")
+sha512sums=('SKIP')
+install=depmod.install
+options=(
+  !debug
+  !strip
+)
+
+_make_flags() {
+  KERNELRELEASE="${_kernel_release}"
+  MAKE_FLAGS=(
+    ARCH=arm64
+    KERNELRELEASE="${KERNELRELEASE}"
+  )
+}
+
+build() {
+  _make_flags
+  make -C v4l2loopback "${MAKE_FLAGS[@]}"
+}
+
+package() {
+  install -Dm755 v4l2loopback/v4l2loopback.ko "${pkgdir}/usr/lib/modules/${_kernel_release}/updates/v4l2loopback.ko"
+}
+
+
+
