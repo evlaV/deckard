@@ -17,8 +17,7 @@ makedepends=(python python-setuptools swig)
 source=("git+https://github.com/evlav/deckard-u-boot.git#tag=${_uboot_srctag}")
 validpgpkeys=('1A3C7F70E08FAB1707809BBF147C39FF9634B72C')
 options=(!lto)
-sha1sums=('9c4707bb2d90ba11cf7d72ed9d6054643450c730')
-sha256sums=('41b58d2bfa7b819527129195499c48a54f1980ef72b2aa71625119cec38c2c6c')
+sha1sums=('SKIP')
 
 build() {
   # Holo disable mold to fix build error
