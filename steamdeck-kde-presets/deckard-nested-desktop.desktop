@@ -1,6 +1,33 @@
 [Desktop Entry]
 Type=Application
 Name=Desktop
+Name[pt_BR]=Área de trabalho
+Name[bg]=Работен плот
+Name[cs]=Plocha
+Name[da]=Skrivebord
+Name[nl]=Bureaublad
+Name[fi]=Työpöytä
+Name[fr]=Bureau
+Name[de]=Desktop
+Name[el]=Επιφάνεια εργασίας
+Name[hu]=Asztal
+Name[it]=Desktop
+Name[ja]=デスクトップ
+Name[ko]=데스크톱
+Name[no]=Skrivebord
+Name[pt_PT]=Ambiente de trabalho
+Name[pl]=Pulpit
+Name[ro]=Desktop
+Name[ru]=Рабочий стол
+Name[es]=Escritorio
+Name[sv]=Skrivbord
+Name[zh_CN]=桌面
+Name[zh_TW]=桌面
+Name[th]=เดสก์ท็อป
+Name[tr]=Masaüstü
+Name[uk]=Робочий стіл
+Name[vi]=Desktop
+Name[id]=Desktop
 Exec=steamos-nested-desktop
 Categories=Utility;
 
