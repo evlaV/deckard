@@ -5,8 +5,9 @@
 # is an intermediate that steamos-customizations-deckard's `deckard-uimage`
 # mkinitcpio post hook wraps into `/boot/initrd.uImage` for U-Boot.  The
 # initramfs itself is built by `90-mkinitcpio-install.hook` afterwards.
-pkgbase=%PKGBASE%
-kver=%KVER%
+pkgbase="%PKGBASE%"
+kver="%KVER%"
+extra_bootargs="%EXTRA_BOOTARGS%"
 preset="/etc/mkinitcpio.d/${pkgbase}.preset"
 
 write_preset() {
@@ -22,6 +23,10 @@ default_image="/tmp/${pkgbase}-initrd.img"
 # builtin, and we don't autodetect because images are built in a container.
 default_options=(-S autodetect,consolefont,kms,keyboard,microcode)
 END
+
+  if [[ -n "${extra_bootargs}" ]]; then
+    fw_setenv default_bootargs "$(fw_printenv default_bootargs | cut -d= -f2-) ${extra_bootargs}"
+  fi
 }
 
 post_install() {

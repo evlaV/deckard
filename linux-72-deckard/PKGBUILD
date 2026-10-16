@@ -174,7 +174,7 @@ _install_kernel() {
   SED_OPTS=(
     -e "s|%PKGBASE%|$kname|g"
     -e "s|%KVER%|$(<version)|g"
-    -e "s|%EXTRA_CMDLINE%|${_kernel_extra_cmdlines[$1]}|g"
+    -e "s|%EXTRA_BOOTARGS%|${_kernel_extra_cmdlines[$1]}|g"
   )
   sed "${SED_OPTS[@]}" "$startdir/$install" > "$startdir/$kname.install"
   true && install="$kname.install"
