@@ -1,0 +1,60 @@
+# Maintainer: Gabe Rowe <gaber@valvesoftware.com>
+
+# This so that our kernel/module builds always happen in lockstep
+source ../linux-618-deckard/kernel_common.pkgbuild
+
+pkgbase=linux-618-deckard-hwdebug
+pkgname=("$pkgbase" "$pkgbase-headers")
+pkgver="${_pkgver:-6.18.0}"
+pkgrel="${_pkgrel:-1}"
+pkgdesc='Linux'
+url="$_kernel_url"
+arch=(aarch64)
+license=(GPL-2.0-only)
+conflicts=("linux-deckard")
+makedepends=("${_kernel_makedepends[@]}")
+options=(
+  !debug
+  !strip
+)
+source=(
+  "kernel_common.pkgbuild"
+  "$_kernel_source"
+)
+sha256sums=(
+  'SKIP'
+  'SKIP'
+)
+
+_kernel_configs="gabe_defconfig hwdebug.config"
+_kernel_extra_bootargs="page_poison=1 page_owner=on no_hash_pointers kfence.sample_interval=10"
+
+prepare() {
+  _prepare_kernel
+}
+
+build() {
+  _build_kernel
+}
+
+package_linux-618-deckard-hwdebug() {
+  pkgdesc="The $pkgdesc kernel and modules"
+  install=../linux-618-deckard/linux-deckard.install.in
+  depends=("${_kernel_depends[@]}")
+  optdepends=("${_kernel_optdepends[@]}")
+  provides=("${_kernel_provides[@]}")
+  replaces=("${_kernel_replaces[@]}")
+
+  _package_kernel
+}
+
+package_linux-618-deckard-hwdebug-headers() {
+  pkgdesc="Headers and scripts for building modules for the $pkgdesc kernel"
+  depends=("${_kernel_headers_depends[@]}")
+  provides=("${_kernel_headers_provides[@]}")
+  conflicts=("linux-deckard-headers")
+
+  _package_kernel_headers
+}
+
+# vim:set ts=8 sts=2 sw=2 et:

@@ -1,0 +1,46 @@
+# Template shared by all linux-*-deckard kernels, rendered by their PKGBUILDs.
+#
+# Replaces the generic preset mkinitcpio would otherwise generate from its
+# template, which expects an x86-style `/boot/vmlinuz-$pkgbase`.  The image
+# is an intermediate that steamos-customizations-deckard's `deckard-uimage`
+# mkinitcpio post hook wraps into `/boot/initrd.uImage` for U-Boot.  The
+# initramfs itself is built by `90-mkinitcpio-install.hook` afterwards.
+pkgbase="%PKGBASE%"
+kver="%KVER%"
+extra_bootargs="%EXTRA_BOOTARGS%"
+preset="/etc/mkinitcpio.d/${pkgbase}.preset"
+
+write_preset() {
+  install -Dm644 /dev/stdin "$preset" <<END
+# mkinitcpio preset file for the '$pkgbase' package
+
+ALL_kver="/boot/Image-$kver"
+
+PRESETS=('default')
+
+default_image="/tmp/${pkgbase}-initrd.img"
+# We have no console font or microcode, GPU and keyboard drivers are
+# builtin, and we don't autodetect because images are built in a container.
+default_options=(-S autodetect,consolefont,kms,keyboard,microcode)
+END
+
+  if [[ -n "${extra_bootargs}" ]]; then
+    declare -A BOOTARGS
+    for item in $(fw_printenv default_bootargs | cut -d= -f2-) ${extra_bootargs}; do
+      BOOTARGS["${item}"]=1
+    done
+    fw_setenv default_bootargs "${!BOOTARGS[*]}"
+  fi
+}
+
+post_install() {
+  write_preset
+}
+
+post_upgrade() {
+  write_preset
+}
+
+post_remove() {
+  rm -f "$preset"
+}
