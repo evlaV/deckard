@@ -1,4 +1,231 @@
 # When you update these values, reset `_pkgrel` below to `1`
 _commit=4b6c9fe99a372ad35a0def6258908f5ec398c1fa
 _pkgver=6.18.0+g${_commit:0:12}
-_pkgrel=2
+_pkgrel=3
+
+# Everything below is shared by the linux-618-deckard kernel flavors (e.g.
+# `linux-618-deckard-hwdebug`), which are separate PKGBUILDs so that they can
+# be built in parallel.  This file is also sourced by packages that merely
+# need to track the kernel version, so it must only define `_`-prefixed
+# names; makepkg's own variables and functions belong in the PKGBUILDs.
+#
+# Kernel PKGBUILDs set `_kernel_configs` (the config targets to build with)
+# and `_kernel_extra_bootargs` (appended to U-Boot's `default_bootargs` on
+# install), then call `_prepare_kernel`, `_build_kernel`, `_package_kernel`
+# and `_package_kernel_headers` from their respective makepkg functions.
+
+_kernel_url="https://gitlab.steamos.cloud/deckard/deckardos/linux-valve/-/tree/$_commit"
+_kernel_makedepends=(
+  bc
+  cpio
+  gettext
+  libelf
+  pahole  #pahole likely needs to be >=1.27
+  perl
+  python
+  tar
+  xz
+
+  # htmldocs
+  # Jupiter: documentation dependencies, disabled for now
+  #graphviz
+  #imagemagick
+  #python-sphinx
+  #python-yaml
+  #texlive-latexextra
+
+  # Deckard: we're using git+ssh for the source
+  git
+  openssh
+)
+_kernel_srcname=archlinux-linux-deckard
+_kernel_source="$_kernel_srcname::git+https://gitlab.steamos.cloud/deckard/deckardos/linux-valve-publicly-released-branches.git#commit=$_commit"
+
+# Metadata for the kernel package
+_kernel_depends=(
+  coreutils
+  initramfs
+  kmod
+)
+_kernel_optdepends=(
+ #   'wireless-regdb: to set the correct wireless channels of your country'
+  'linux-firmware-deckard: firmware images needed for some devices'
+)
+_kernel_provides=(
+  "linux-deckard=$_pkgver"
+  KSMBD-MODULE
+  VIRTUALBOX-GUEST-MODULES
+  WIREGUARD-MODULE
+)
+_kernel_replaces=(
+  virtualbox-guest-modules-arch
+  wireguard-arch
+)
+
+# Metadata for the headers package
+_kernel_headers_depends=(pahole)
+_kernel_headers_provides=("linux-deckard-headers=$_pkgver")
+
+_kernel_export_env() {
+  export KBUILD_BUILD_HOST=archlinux
+  export KBUILD_BUILD_USER=$pkgbase
+  export KBUILD_BUILD_TIMESTAMP="$(date -Ru${SOURCE_DATE_EPOCH:+d @$SOURCE_DATE_EPOCH})"
+}
+
+_prepare_kernel() {
+  _kernel_export_env
+  cd $_kernel_srcname
+
+  local src
+  for src in "${source[@]}"; do
+    src="${src%%::*}"
+    src="${src##*/}"
+    src="${src%.zst}"
+    [[ $src = *.patch ]] || continue
+    echo "Applying patch $src..."
+    patch -Np1 < "../$src"
+  done
+}
+
+_build_kernel() {
+  _kernel_export_env
+  cd $_kernel_srcname
+
+  echo "Setting config ($_kernel_configs)..."
+  make ARCH=arm64 $_kernel_configs
+
+  BUILDOPTIONS=(
+    ARCH=arm64
+  )
+  # Set cross compile if building with crossdirect since the cross compiler
+  # toolchain is made available from the native build machine
+  if [ -n "$CROSSDIRECT" ]; then
+    BUILDOPTIONS+=(CROSS_COMPILE=aarch64-linux-gnu- -j$(nproc))
+  fi
+  make "${BUILDOPTIONS[@]}" all
+  #make -C tools/bpf/bpftool vmlinux.h feature-clang-bpf-co-re=1
+  #make "${BUILDOPTIONS[@]}" htmldocs # Deckard: Don't build the docs
+
+  # query the release after building to pick up CONFIG_LOCALVERSION
+  make ARCH=arm64 -s kernelrelease > version
+  echo "Kernel version $(<version)"
+}
+
+# Expects `install` to point at the `linux-deckard.install.in` template, which
+# is rendered into this kernel's install scriptlet.
+_package_kernel() {
+  _kernel_export_env
+  cd $_kernel_srcname
+  local modulesdir="$pkgdir/usr/lib/modules/$(<version)"
+
+  echo "Installing boot image..."
+  install -Dm644 "arch/arm64/boot/Image" "$pkgdir/boot/Image-$(<version)"
+  ln -s "Image-$(<version)" "$pkgdir/boot/Image"
+
+  # Used by mkinitcpio to name the kernel
+  echo "$pkgbase" | install -Dm644 /dev/stdin "$modulesdir/pkgbase"
+
+  # Render the install scriptlet that writes our mkinitcpio preset
+  SED_OPTS=(
+    -e "s|%PKGBASE%|$pkgbase|g"
+    -e "s|%KVER%|$(<version)|g"
+    -e "s|%EXTRA_BOOTARGS%|$_kernel_extra_bootargs|g"
+  )
+  sed "${SED_OPTS[@]}" "$startdir/$install" > "$startdir/$pkgbase.install"
+  install="$pkgbase.install"
+
+  local maindtb="sm8650-mp.dtb"
+  echo "Installing dtbs...( maindtb = $maindtb )"
+  INSTALL_DTBS_PATH=$pkgdir/boot/dtbs/$(<version) make "ARCH=arm64" dtbs_install
+  ln -s "dtbs/$(<version)/qcom" "$pkgdir/boot/dtbqcom"
+  ln -sf "dtbs/$(<version)/qcom/$maindtb" "$pkgdir/boot/maindtb.dtb"
+
+  echo "Installing modules..."
+  ZSTD_CLEVEL=19 make INSTALL_MOD_PATH="$pkgdir/usr" INSTALL_MOD_STRIP=1 \
+    DEPMOD=/doesnt/exist modules_install  # Suppress depmod
+
+  # remove build link
+  rm "$modulesdir"/build
+}
+
+_package_kernel_headers() {
+  _kernel_export_env
+  cd $_kernel_srcname
+  local builddir="$pkgdir/usr/lib/modules/$(<version)/build"
+
+  echo "Installing build files..."
+  install -Dt "$builddir" -m644 .config Makefile Module.symvers System.map version vmlinux
+  install -Dt "$builddir/kernel" -m644 kernel/Makefile
+  install -Dt "$builddir/arch/arm64" -m644 arch/arm64/Makefile
+  cp -t "$builddir" -a scripts
+  ln -srt "$builddir" "$builddir/scripts/gdb/vmlinux-gdb.py"
+
+  # required when STACK_VALIDATION is enabled
+  #install -Dt "$builddir/tools/objtool" tools/objtool/objtool
+
+  # required when DEBUG_INFO_BTF_MODULES is enabled
+  install -Dt "$builddir/tools/bpf/resolve_btfids" tools/bpf/resolve_btfids/resolve_btfids
+
+  echo "Installing headers..."
+  cp -t "$builddir" -a include
+  cp -t "$builddir/arch/arm64" -a arch/arm64/include
+  install -Dt "$builddir/arch/arm64/kernel" -m644 arch/arm64/kernel/asm-offsets.s
+
+  install -Dt "$builddir/drivers/md" -m644 drivers/md/*.h
+  install -Dt "$builddir/net/mac80211" -m644 net/mac80211/*.h
+
+  # https://bugs.archlinux.org/task/13146
+  #install -Dt "$builddir/drivers/media/i2c" -m644 drivers/media/i2c/msp3400-driver.h
+
+  # https://bugs.archlinux.org/task/20402
+  #install -Dt "$builddir/drivers/media/usb/dvb-usb" -m644 drivers/media/usb/dvb-usb/*.h
+  #install -Dt "$builddir/drivers/media/dvb-frontends" -m644 drivers/media/dvb-frontends/*.h
+  #install -Dt "$builddir/drivers/media/tuners" -m644 drivers/media/tuners/*.h
+
+  # https://bugs.archlinux.org/task/71392
+  #install -Dt "$builddir/drivers/iio/common/hid-sensors" -m644 drivers/iio/common/hid-sensors/*.h
+
+  echo "Installing KConfig files..."
+  find . -name 'Kconfig*' -exec install -Dm644 {} "$builddir/{}" \;
+
+  echo "Removing unneeded architectures..."
+  local arch
+  for arch in "$builddir"/arch/*/; do
+    [[ $arch = */arm64/ ]] && continue
+    echo "Removing $(basename "$arch")"
+    rm -r "$arch"
+  done
+
+  echo "Removing documentation..."
+  rm -r "$builddir/Documentation"
+
+  echo "Removing broken symlinks..."
+  find -L "$builddir" -type l -printf 'Removing %P\n' -delete
+
+  echo "Removing loose objects..."
+  find "$builddir" -type f -name '*.o' -printf 'Removing %P\n' -delete
+
+  echo "Stripping build tools..."
+  local file
+  while read -rd '' file; do
+    case "$(file -Sib "$file")" in
+      application/x-sharedlib\;*)      # Libraries (.so)
+        strip -v $STRIP_SHARED "$file" ;;
+      application/x-archive\;*)        # Libraries (.a)
+        strip -v $STRIP_STATIC "$file" ;;
+      application/x-executable\;*)     # Binaries
+        strip -v $STRIP_BINARIES "$file" ;;
+      application/x-pie-executable\;*) # Relocatable binaries
+        strip -v $STRIP_SHARED "$file" ;;
+    esac
+  done < <(find "$builddir" -type f -perm -u+x ! -name vmlinux -print0)
+
+  echo "Stripping vmlinux..."
+  strip -v $STRIP_STATIC "$builddir/vmlinux"
+
+  echo "Adding symlink..."
+  mkdir -p "$pkgdir/usr/src"
+  ln -sr "$builddir" "$pkgdir/usr/src/$pkgbase"
+}
+
+# vim:set ts=8 sts=2 sw=2 et:
