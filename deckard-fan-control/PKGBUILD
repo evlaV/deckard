@@ -1,7 +1,7 @@
 # Maintainer: Elliot Saba <sabae@valvesoftware.com>
 
 pkgname=deckard-fan-control
-_srctag=20260324.1
+_srctag=20261015.1
 pkgver=${_srctag//-/.}
 pkgrel=4
 arch=('any')
