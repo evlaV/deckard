@@ -1,7 +1,7 @@
 # When you update these values, reset `_pkgrel` below to `1`
 _commit=4b6c9fe99a372ad35a0def6258908f5ec398c1fa
 _pkgver=6.18.0+g${_commit:0:12}
-_pkgrel=3
+_pkgrel=4
 
 # Everything below is shared by the linux-618-deckard kernel flavors (e.g.
 # `linux-618-deckard-hwdebug`), which are separate PKGBUILDs so that they can
@@ -129,7 +129,7 @@ _package_kernel() {
   SED_OPTS=(
     -e "s|%PKGBASE%|$pkgbase|g"
     -e "s|%KVER%|$(<version)|g"
-    -e "s|%EXTRA_BOOTARGS%|$_kernel_extra_bootargs|g"
+    -e "s|%EXTRA_BOOTARGS%|${_kernel_extra_bootargs[*]}|g"
   )
   sed "${SED_OPTS[@]}" "$startdir/$install" > "$startdir/$pkgbase.install"
   install="$pkgbase.install"
