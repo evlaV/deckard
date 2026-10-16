@@ -25,7 +25,11 @@ default_options=(-S autodetect,consolefont,kms,keyboard,microcode)
 END
 
   if [[ -n "${extra_bootargs}" ]]; then
-    fw_setenv default_bootargs "$(fw_printenv default_bootargs | cut -d= -f2-) ${extra_bootargs}"
+    declare -A BOOTARGS
+    for item in $(fw_printenv default_bootargs | cut -d= -f2-) ${extra_bootargs}; do
+      BOOTARGS["${item}"]=1
+    done
+    fw_setenv default_bootargs "${!BOOTARGS[*]}"
   fi
 }
 

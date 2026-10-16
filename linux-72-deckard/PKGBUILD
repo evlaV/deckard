@@ -4,316 +4,57 @@
 source ../linux-72-deckard/kernel_common.pkgbuild
 
 pkgbase=linux-72-deckard
+pkgname=("$pkgbase" "$pkgbase-headers")
 pkgver="${_pkgver:-7.2.0}"
 pkgrel="${_pkgrel:-1}"
 pkgdesc='Linux'
-url="https://github.com/evlav/deckard-linux/-/tree/$_commit"
+url="$_kernel_url"
 arch=(aarch64)
 license=(GPL-2.0-only)
 conflicts=("linux-deckard")
-makedepends=(
-  bc
-  cpio
-  gettext
-  libelf
-  pahole  #pahole likely needs to be >=1.27
-  perl
-  python
-  tar
-  xz
-
-  # htmldocs
-  # Jupiter: documentation dependencies, disabled for now
-  #graphviz
-  #imagemagick
-  #python-sphinx
-  #python-yaml
-  #texlive-latexextra
-
-  # Deckard: we're using git+ssh for the source
-  git
-  openssh
-)
+makedepends=("${_kernel_makedepends[@]}")
 options=(
   !debug
   !strip
 )
-_srcname=archlinux-linux-deckard
 source=(
   "kernel_common.pkgbuild"
-  "$_srcname::git+https://github.com/evlav/deckard-linux-no-oopsies.git#commit=$_commit"
+  "$_kernel_source"
 )
-
 sha256sums=(
   'SKIP'
   'SKIP'
 )
-export KBUILD_BUILD_HOST=archlinux
-export KBUILD_BUILD_USER=$pkgbase
-export KBUILD_BUILD_TIMESTAMP="$(date -Ru${SOURCE_DATE_EPOCH:+d @$SOURCE_DATE_EPOCH})"
 
-# Kernels to build, mapping each name to the config targets it is configured
-# with.  The `main` kernel is packaged as $pkgbase; every other kernel is
-# packaged as $pkgbase-<name>.  (`-g` because makepkg sources us from within
-# a function.)
-declare -gA _kernels=(
-  [main]="gabe_defconfig"
-  [hwdebug]="gabe_defconfig hwdebug.config"
-)
-declare -gA _kernel_extra_cmdlines=(
-  [main]=""
-  [hwdebug]="page_poison=1 page_owner=on no_hash_pointers kfence.sample_interval=10 iommu.debug_pagealloc=1"
-)
-
-# Usage: _kernel_suffix <kernel name>
-_kernel_suffix() {
-  [[ $1 == main ]] || echo "-$1"
-}
+_kernel_configs="gabe_defconfig"
+_kernel_extra_bootargs=""
 
 prepare() {
-  cd $_srcname
-
-  local src
-  for src in "${source[@]}"; do
-    src="${src%%::*}"
-    src="${src##*/}"
-    src="${src%.zst}"
-    [[ $src = *.patch ]] || continue
-    echo "Applying patch $src..."
-    patch -Np1 < "../$src"
-  done
-
-  # Each extra kernel is built from its own copy of the tree so that all
-  # kernels can be packaged (including headers) from their in-tree outputs.
-  cd "$srcdir"
-  local kernel
-  for kernel in "${!_kernels[@]}"; do
-    [[ $kernel == main ]] && continue
-    rm -rf "$_srcname-$kernel"
-    cp -a "$_srcname" "$_srcname-$kernel"
-  done
-}
-
-# Usage: _build_kernel <kernel name>
-_build_kernel() {
-  local configs="${_kernels[$1]}"
-  pushd "$srcdir/$_srcname$(_kernel_suffix "$1")"
-
-  echo "Setting config for $1 kernel ($configs)..."
-  make ARCH=arm64 $configs
-
-  BUILDOPTIONS=(
-    ARCH=arm64
-  )
-  # Set cross compile if building with crossdirect since the cross compiler
-  # toolchain is made available from the native build machine
-  if [ -n "$CROSSDIRECT" ]; then
-    BUILDOPTIONS+=(CROSS_COMPILE=aarch64-linux-gnu- -j$(nproc))
-  fi
-  make "${BUILDOPTIONS[@]}" all
-  #make -C tools/bpf/bpftool vmlinux.h feature-clang-bpf-co-re=1
-  #make "${BUILDOPTIONS[@]}" htmldocs # Deckard: Don't build the docs
-
-  # query the release after building to pick up CONFIG_LOCALVERSION
-  make ARCH=arm64 -s kernelrelease > version
-  echo "Kernel version $(<version)"
-
-  popd
+  _prepare_kernel
 }
 
 build() {
-  local kernel
-  for kernel in "${!_kernels[@]}"; do
-    _build_kernel "$kernel"
-  done
+  _build_kernel
 }
 
-_package() {
+package_linux-72-deckard() {
   pkgdesc="The $pkgdesc kernel and modules"
   install=../linux-618-deckard/linux-deckard.install.in
-  depends=(
-    coreutils
-    initramfs
-    kmod
-  )
-  optdepends=(
- #   'wireless-regdb: to set the correct wireless channels of your country'
-    'linux-firmware-deckard: firmware images needed for some devices'
-  )
-  provides=(
-   "linux-deckard=${pkgver}"
-    KSMBD-MODULE
-    VIRTUALBOX-GUEST-MODULES
-    WIREGUARD-MODULE
-  )
-  replaces=(
-    virtualbox-guest-modules-arch
-    wireguard-arch
-  )
+  depends=("${_kernel_depends[@]}")
+  optdepends=("${_kernel_optdepends[@]}")
+  provides=("${_kernel_provides[@]}")
+  replaces=("${_kernel_replaces[@]}")
 
-  _install_kernel "$1"
+  _package_kernel
 }
 
-# Usage: _install_kernel <kernel name>
-_install_kernel() {
-  local suffix=$(_kernel_suffix "$1")
-  local kname="$pkgbase$suffix"
-  cd "$srcdir/$_srcname$suffix"
-  local modulesdir="$pkgdir/usr/lib/modules/$(<version)"
-
-  echo "Installing boot image..."
-  install -Dm644 "arch/arm64/boot/Image" "$pkgdir/boot/Image-$(<version)"
-  ln -s "Image-$(<version)" "$pkgdir/boot/Image"
-
-  # Used by mkinitcpio to name the kernel
-  echo "$kname" | install -Dm644 /dev/stdin "$modulesdir/pkgbase"
-
-  # Render the install scriptlet that writes our mkinitcpio preset.  The
-  # `true &&` hides the reassignment from makepkg's lint, which requires
-  # `install` to exist before the build (and thus can't be the rendered file).
-  SED_OPTS=(
-    -e "s|%PKGBASE%|$kname|g"
-    -e "s|%KVER%|$(<version)|g"
-    -e "s|%EXTRA_BOOTARGS%|${_kernel_extra_cmdlines[$1]}|g"
-  )
-  sed "${SED_OPTS[@]}" "$startdir/$install" > "$startdir/$kname.install"
-  true && install="$kname.install"
-
-  local maindtb="sm8650-mp.dtb"
-  echo "Installing dtbs...( maindtb = $maindtb )"
-  INSTALL_DTBS_PATH=$pkgdir/boot/dtbs/$(<version) make "ARCH=arm64" dtbs_install
-  ln -s "dtbs/$(<version)/qcom" "$pkgdir/boot/dtbqcom"
-  ln -sf "dtbs/$(<version)/qcom/$maindtb" "$pkgdir/boot/maindtb.dtb"
-
-  echo "Installing modules..."
-  ZSTD_CLEVEL=19 make INSTALL_MOD_PATH="$pkgdir/usr" INSTALL_MOD_STRIP=1 \
-    DEPMOD=/doesnt/exist modules_install  # Suppress depmod
-
-  # remove build link
-  rm "$modulesdir"/build
-}
-
-_package-headers() {
+package_linux-72-deckard-headers() {
   pkgdesc="Headers and scripts for building modules for the $pkgdesc kernel"
-  depends=(pahole)
-  provides=("linux-deckard-headers=${pkgver}")
+  depends=("${_kernel_headers_depends[@]}")
+  provides=("${_kernel_headers_provides[@]}")
   conflicts=("linux-deckard-headers")
 
-  _install_headers "$1"
+  _package_kernel_headers
 }
-
-# Usage: _install_headers <kernel name>
-_install_headers() {
-  local suffix=$(_kernel_suffix "$1")
-  local kname="$pkgbase$suffix"
-  cd "$srcdir/$_srcname$suffix"
-  local builddir="$pkgdir/usr/lib/modules/$(<version)/build"
-
-  echo "Installing build files..."
-  install -Dt "$builddir" -m644 .config Makefile Module.symvers System.map version vmlinux
-  install -Dt "$builddir/kernel" -m644 kernel/Makefile
-  install -Dt "$builddir/arch/arm64" -m644 arch/arm64/Makefile
-  cp -t "$builddir" -a scripts
-  ln -srt "$builddir" "$builddir/scripts/gdb/vmlinux-gdb.py"
-
-  # required when STACK_VALIDATION is enabled
-  #install -Dt "$builddir/tools/objtool" tools/objtool/objtool
-
-  # required when DEBUG_INFO_BTF_MODULES is enabled
-  install -Dt "$builddir/tools/bpf/resolve_btfids" tools/bpf/resolve_btfids/resolve_btfids
-
-  echo "Installing headers..."
-  cp -t "$builddir" -a include
-  cp -t "$builddir/arch/arm64" -a arch/arm64/include
-  install -Dt "$builddir/arch/arm64/kernel" -m644 arch/arm64/kernel/asm-offsets.s
-
-  install -Dt "$builddir/drivers/md" -m644 drivers/md/*.h
-  install -Dt "$builddir/net/mac80211" -m644 net/mac80211/*.h
-
-  # https://bugs.archlinux.org/task/13146
-  #install -Dt "$builddir/drivers/media/i2c" -m644 drivers/media/i2c/msp3400-driver.h
-
-  # https://bugs.archlinux.org/task/20402
-  #install -Dt "$builddir/drivers/media/usb/dvb-usb" -m644 drivers/media/usb/dvb-usb/*.h
-  #install -Dt "$builddir/drivers/media/dvb-frontends" -m644 drivers/media/dvb-frontends/*.h
-  #install -Dt "$builddir/drivers/media/tuners" -m644 drivers/media/tuners/*.h
-
-  # https://bugs.archlinux.org/task/71392
-  #install -Dt "$builddir/drivers/iio/common/hid-sensors" -m644 drivers/iio/common/hid-sensors/*.h
-
-  echo "Installing KConfig files..."
-  find . -name 'Kconfig*' -exec install -Dm644 {} "$builddir/{}" \;
-
-  echo "Removing unneeded architectures..."
-  local arch
-  for arch in "$builddir"/arch/*/; do
-    [[ $arch = */arm64/ ]] && continue
-    echo "Removing $(basename "$arch")"
-    rm -r "$arch"
-  done
-
-  echo "Removing documentation..."
-  rm -r "$builddir/Documentation"
-
-  echo "Removing broken symlinks..."
-  find -L "$builddir" -type l -printf 'Removing %P\n' -delete
-
-  echo "Removing loose objects..."
-  find "$builddir" -type f -name '*.o' -printf 'Removing %P\n' -delete
-
-  echo "Stripping build tools..."
-  local file
-  while read -rd '' file; do
-    case "$(file -Sib "$file")" in
-      application/x-sharedlib\;*)      # Libraries (.so)
-        strip -v $STRIP_SHARED "$file" ;;
-      application/x-archive\;*)        # Libraries (.a)
-        strip -v $STRIP_STATIC "$file" ;;
-      application/x-executable\;*)     # Binaries
-        strip -v $STRIP_BINARIES "$file" ;;
-      application/x-pie-executable\;*) # Relocatable binaries
-        strip -v $STRIP_SHARED "$file" ;;
-    esac
-  done < <(find "$builddir" -type f -perm -u+x ! -name vmlinux -print0)
-
-  echo "Stripping vmlinux..."
-  strip -v $STRIP_STATIC "$builddir/vmlinux"
-
-  echo "Adding symlink..."
-  mkdir -p "$pkgdir/usr/src"
-  ln -sr "$builddir" "$pkgdir/usr/src/$kname"
-}
-
-_package-docs() {
-  pkgdesc="Documentation for the $pkgdesc kernel"
-
-  cd $_srcname
-  local builddir="$pkgdir/usr/lib/modules/$(<version)/build"
-
-  echo "Installing documentation..."
-  local src dst
-  while read -rd '' src; do
-    dst="${src#Documentation/}"
-    dst="$builddir/Documentation/${dst#output/}"
-    install -Dm644 "$src" "$dst"
-  done < <(find Documentation -name '.*' -prune -o ! -type d -print0)
-
-  echo "Adding symlink..."
-  mkdir -p "$pkgdir/usr/share/doc"
-  ln -sr "$builddir/Documentation" "$pkgdir/usr/share/doc/$pkgbase"
-}
-
-# Deckard: Don't package the docs
-pkgname=()
-for _k in "${!_kernels[@]}"; do
-  for _t in "" -headers; do
-    _p="$pkgbase$(_kernel_suffix "$_k")$_t"
-    pkgname+=("$_p")
-    eval "package_$_p() {
-      $(declare -f "_package$_t")
-      _package$_t $_k
-    }"
-  done
-done
 
 # vim:set ts=8 sts=2 sw=2 et:
