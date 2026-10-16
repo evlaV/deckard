@@ -27,7 +27,14 @@ sha256sums=(
 )
 
 _kernel_configs="gabe_defconfig hwdebug.config"
-_kernel_extra_bootargs="page_poison=1 page_owner=on no_hash_pointers kfence.sample_interval=10"
+_kernel_extra_bootargs=(
+  # Disabled for now, as it causes a reset right after `stack_depot_early_init()`.  This is presumably because we touch some piece of memory that is firmware-protected.
+  #page_poison=1
+  page_owner=on
+  no_hash_pointers
+  kfence.sample_interval=10
+  ignore_loglevel
+)
 
 prepare() {
   _prepare_kernel
