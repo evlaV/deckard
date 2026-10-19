@@ -1,7 +1,7 @@
 # When you update these values, reset `_pkgrel` below to `1`
-_commit=e182be9880ac16cdd6b8f0e638f5672dc87ebd1d
+_commit=588c8cf61681a4f2323c498a6f4804fcdc4a7ad0
 _pkgver=7.2.0+g${_commit:0:12}
-_pkgrel=4
+_pkgrel=1
 
 # Everything below is shared by the linux-72-deckard kernel flavors (e.g.
 # `linux-72-deckard-hwdebug`), which are separate PKGBUILDs so that they can
