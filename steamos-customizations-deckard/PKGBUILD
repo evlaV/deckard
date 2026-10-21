@@ -5,7 +5,7 @@ pkgname=steamos-customizations-deckard
 _srctag=deckard-20261002.1
 _srcver=${_srctag#deckard-}
 pkgver=${_srcver//-/.}
-pkgrel=3
+pkgrel=4
 pkgdesc='SteamOS customizations (Deckard fork) - This package installs various SteamOS-specific files'
 arch=('any')
 url='http://repo.steampowered.com'
@@ -119,7 +119,7 @@ package() {
 		install-misc
 		install-NetworkManager
 		install-offload
-		#install-swap # <--- not doing this until we experiment with turning on hibernation
+		install-swap 
 	)
 	cd "${pkgname%-git}"
 	make DESTDIR="$pkgdir" prefix="/usr" sbindir="/usr/bin" libexecdir="/usr/lib" \
