@@ -1,9 +1,9 @@
 # Maintainer: Gabe Rowe <gaber@valvesoftware.com>
 
 pkgname=linux-firmware-deckard
-_commit=df2d800f106db81a34beb4d927e1991fa965d784
-pkgver=20260801.1+git${_commit:0:8}
-pkgrel=4
+_commit=594f649dc68489760d5f2f1fca4fd542fb8e7858
+pkgver=20261023.1+git${_commit:0:8}
+pkgrel=1
 pkgdesc="Firmware files for Linux"
 url="https://github.com/evlav/deckard-linux-firmware"
 license=('custom')
