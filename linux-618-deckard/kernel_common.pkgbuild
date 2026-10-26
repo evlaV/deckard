@@ -1,7 +1,7 @@
 # When you update these values, reset `_pkgrel` below to `1`
-_commit=733a4be78129d1a9481d22c0a6ace630adacc1da
+_commit=ee93c0d9394bcf2dc9cb473d87aa1856fe5db38e
 _pkgver=6.18.0+g${_commit:0:12}
-_pkgrel=4
+_pkgrel=1
 
 # Everything below is shared by the linux-618-deckard kernel flavors (e.g.
 # `linux-618-deckard-hwdebug`), which are separate PKGBUILDs so that they can
