@@ -1,7 +1,7 @@
 # Maintainer: Elliot Saba <sabae@valvesoftware.com>
 
 pkgname=deckard-audio-config
-_srctag=20261026.1
+_srctag=20261027.2
 pkgver=${_srctag//-/.}
 pkgrel=1
 arch=('any')
@@ -17,7 +17,7 @@ makedepends=('git' 'rsync' 'openssh')
 source=(
     "git+https://github.com/evlav/deckard-audio-config.git#tag=$_srctag"
 )
-sha256sums=('cf727cdbaacaec633c37c3b51aadfd71c1644fb74d4d1fa870d50f3278bcba9c')
+sha256sums=('799ad9b8c14f59bd0af2855abe7a35409026cf78a969fa3e5f3957936b880308')
 
 package() {
    rsync -a --exclude 'README.md' --exclude 'src' "$srcdir/${pkgname}/"* "$pkgdir"
