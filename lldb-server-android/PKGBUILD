@@ -7,15 +7,15 @@
 #  to ensure the CI doesn't build lldb against the old llvm
 # Holo: split PKGBUILD to share sources with android build.
 
-pkgver=19.1.7
-pkgrel=4
+pkgver=21.1.8
+pkgrel=5
 pkgdesc="Next generation, high-performance debugger"
 arch=('x86_64' 'aarch64')
 url="https://lldb.llvm.org/"
 license=('Apache-2.0 WITH LLVM-exception')
-depends=("llvm-libs>=${pkgver}" 'clang' 'gcc-libs' 'zlib' 'xz' 'libedit' 'ncurses'
+depends=('llvm-libs' 'clang' 'gcc-libs' 'zlib' 'xz' 'libedit' 'ncurses'
          'libxml2' 'python')
-makedepends=("llvm>=${pkgver}" 'cmake' 'ninja' 'swig' 'python-sphinx')
+makedepends=('llvm' 'cmake' 'ninja' 'swig' 'python-sphinx')
 _source_base=https://github.com/llvm/llvm-project/releases/download/llvmorg-$pkgver
 validpgpkeys=('474E22316ABF4785A88C6E8EA2C794A986419D8A'  # Tom Stellard <tstellar@redhat.com>
               'D574BD5D1D0E98895E3BF90044F2485E45D59042') # Tobias Hieta <tobias@hieta.se>
@@ -23,7 +23,7 @@ validpgpkeys=('474E22316ABF4785A88C6E8EA2C794A986419D8A'  # Tom Stellard <tstell
 pkgname=lldb-server-android
 source=($_source_base/llvm-project-$pkgver.src.tar.xz{,.sig})
 
-sha256sums=('82401fea7b79d0078043f7598b835284d6650a75b93e64b6f761ea7b63097501'
+sha256sums=('4633a23617fa31a3ea51242586ea7fb1da7140e426bd62fc164261fe036aa142'
             'SKIP')
 prepare() {
   cd llvm-project-$pkgver.src/llvm
@@ -59,6 +59,7 @@ build() {
     -DANDROID_PLATFORM=android-30
     -DANDROID_ALLOW_UNDEFINED_SYMBOLS=On
     -DLLVM_INCLUDE_TOOLS=ON
+    -DLLVM_APPEND_VC_REV=OFF
   )
   cmake .. "${cmake_args[@]}"
   ninja lldb-server
