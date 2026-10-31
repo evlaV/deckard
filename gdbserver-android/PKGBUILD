@@ -1,0 +1,87 @@
+pkgname=gdbserver-android
+pkgver=17.1
+pkgrel=2
+pkgdesc='GNU gdbserver cross-compiled for Android arm64-v8a'
+arch=('aarch64')
+url='https://www.gnu.org/software/gdb/'
+license=('GPL-3.0-or-later')
+depends=()
+makedepends=('gcc' 'make' 'texinfo' 'python' 'zlib' 'expat' 'patch')
+options=('!strip' '!debug')
+source=("https://ftp.gnu.org/gnu/gdb/gdb-${pkgver}.tar.xz"
+	"0001-eintr-fix.patch"
+	"facd8df2dd7c2de0d7d9adcfaef22454361c77a4.patch")
+sha256sums=('14996f5f74c9f68f5a543fdc45bca7800207f91f92aeea6c2e791822c7c6d876'
+            '4716188891e42c36981d6d1160b37045beb977f696a6011b1d6d447bf87e9a0f'
+            '53d05a023fa31f94d5f5f77c54265549e1b1d2cfb9e03c32837dead26cc6809b')
+
+prepare() {
+  mkdir -p "${srcdir}/build-android"
+  cd "${srcdir}/gdb-${pkgver}"
+  patch -p1 < ${srcdir}/0001-eintr-fix.patch
+  patch -p1 < ${srcdir}/facd8df2dd7c2de0d7d9adcfaef22454361c77a4.patch
+}
+
+build() {
+  cd "${srcdir}/build-android"
+  export NDK_VERSION=25.2.9519653
+  export ANDROID_SDK_ROOT=/opt/android
+  export ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/$NDK_VERSION
+
+  # Prevent cmake from using host flags.
+  export CFLAGS=
+  export CXXFLAGS=
+  export CPPFLAGS=
+
+  export TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
+  export API=30
+  export PATH="$TOOLCHAIN/bin:$PATH"
+
+  export CC="aarch64-linux-android${API}-clang"
+  export CXX="aarch64-linux-android${API}-clang++"
+  export AR=llvm-ar
+  export RANLIB=llvm-ranlib
+  export STRIP=llvm-strip
+
+  local build_triplet="x86_64-pc-linux-gnu"
+
+  env \
+    CC="$CC" \
+    CXX="$CXX" \
+    AR="${TOOLCHAIN}/bin/llvm-ar" \
+    AS="${TOOLCHAIN}/bin/llvm-as" \
+    LD="${TOOLCHAIN}/bin/ld.lld" \
+    RANLIB="${TOOLCHAIN}/bin/llvm-ranlib" \
+    NM="${TOOLCHAIN}/bin/llvm-nm" \
+    STRIP="${TOOLCHAIN}/bin/llvm-strip" \
+    CFLAGS="-O2 -fPIC" \
+    CXXFLAGS="-O2 -fPIC" \
+    LDFLAGS="" \
+    "${srcdir}/gdb-${pkgver}/configure" \
+      --build="$build_triplet" \
+      --host=aarch64-linux-android \
+      --target=aarch64-linux-android \
+      --with-sysroot="${_sysroot}" \
+      --disable-binutils \
+      --disable-gas \
+      --disable-ld \
+      --disable-gold \
+      --disable-gprof \
+      --disable-nls \
+      --disable-werror \
+      --disable-gdb \
+      --enable-gdbserver
+
+  make -j"$(nproc)" all-gdbserver
+}
+
+package() {
+  local binary
+  binary="$(find "${srcdir}/build-android" -type f -name gdbserver -perm -u+x -print -quit)"
+  [[ -n "${binary}" ]] || {
+    printf 'ERROR: gdbserver binary was not produced.\n' >&2
+    return 1
+  }
+
+  install -Dm755 "${binary}" "${pkgdir}/usr/share/guestos/android/vendor/bin/gdbserver"
+}

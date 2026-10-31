@@ -1,0 +1,17 @@
+diff --git a/gdbsupport/eintr.h b/gdbsupport/eintr.h
+index f2b4939..04f86c8 100644
+--- a/gdbsupport/eintr.h
++++ b/gdbsupport/eintr.h
+@@ -82,7 +82,11 @@ waitpid (pid_t pid, int *wstatus, int options)
+ inline int
+ open (const char *pathname, int flags)
+ {
++  return gdb::handle_eintr (-1,
++    [](const char *path, int flags) {
++      return ::open(path, flags);
++    },
++    pathname, flags);
+-  return gdb::handle_eintr (-1, ::open, pathname, flags);
+ }
+ 
+ #ifdef HAVE_WAIT
