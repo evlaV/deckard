@@ -1,0 +1,15 @@
+pkgname=deckard-chromium-integration
+_commit=d5fe10747c1ee8e189b1bc51fc25379583c52db5
+pkgver=1.0.0
+pkgrel=1
+arch=(any)
+url="https://www.chromium.org/"
+pkgdesc="Integration for Chromium flatpak configuration"
+source=(
+    "git+https://github.com/evlav/deckard-chromium-integration.git#commit=$_commit"
+)
+sha512sums=('SKIP')
+
+package() {
+    cp -R "${srcdir}"/"${pkgname}"/* "${pkgdir}"
+}
