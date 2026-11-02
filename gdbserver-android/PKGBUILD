@@ -1,6 +1,6 @@
 pkgname=gdbserver-android
 pkgver=17.1
-pkgrel=2
+pkgrel=3
 pkgdesc='GNU gdbserver cross-compiled for Android arm64-v8a'
 arch=('aarch64')
 url='https://www.gnu.org/software/gdb/'
@@ -55,8 +55,8 @@ build() {
     NM="${TOOLCHAIN}/bin/llvm-nm" \
     STRIP="${TOOLCHAIN}/bin/llvm-strip" \
     CFLAGS="-O2 -fPIC" \
-    CXXFLAGS="-O2 -fPIC" \
-    LDFLAGS="" \
+    CXXFLAGS="-O2 -fPIC -static-libstdc++" \
+    LDFLAGS="-static-libstdc++" \
     "${srcdir}/gdb-${pkgver}/configure" \
       --build="$build_triplet" \
       --host=aarch64-linux-android \
