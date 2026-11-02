@@ -1,0 +1,37 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Matthew Schwartz <matthew.schwartz@linux.dev>
+Date: Wed, 21 Oct 2026 14:51:48 -0700
+Subject: [PATCH] run: Don't pass QT_QPA_PLATFORMTHEME=kde into the sandbox
+
+KNotifications 5.116 only skips its legacy tray fallback in a KDE
+session. Outside one, an inherited QT_QPA_PLATFORMTHEME=kde makes each
+tray icon create another through the KDE theme, each with its own
+session bus connection, until dbus-broker runs out of fds and takes the
+whole session down. KF6 fixed this in kstatusnotifieritem c21b7c31.
+
+Drop the variable before applying the app's environment, so explicit
+--env and overrides still win. Inside Plasma, Qt still picks the KDE
+theme from XDG_CURRENT_DESKTOP. Sessions that force the theme lose it
+inside the sandbox, including for KF6 apps that never hit the loop.
+---
+ common/flatpak-run.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/common/flatpak-run.c b/common/flatpak-run.c
+index fe56025..1416fde 100644
+--- a/common/flatpak-run.c
++++ b/common/flatpak-run.c
+@@ -3214,6 +3214,10 @@ flatpak_run_app (FlatpakDecomposed   *app_ref,
+       app_files = g_object_ref (original_app_files);
+     }
+ 
++  /* KF5 runtimes loop on tray icons under a forced KDE theme outside Plasma. */
++  if (g_strcmp0 (g_environ_getenv (bwrap->envp, "QT_QPA_PLATFORMTHEME"), "kde") == 0)
++    flatpak_bwrap_unset_env (bwrap, "QT_QPA_PLATFORMTHEME");
++
+   flatpak_run_apply_env_default (bwrap, use_ld_so_cache);
+   flatpak_run_apply_env_vars (bwrap, app_context);
+   flatpak_run_apply_env_prompt (bwrap, app_id);
+-- 
+2.56.0
+
