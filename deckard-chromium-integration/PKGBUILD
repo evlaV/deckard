@@ -1,7 +1,7 @@
 pkgname=deckard-chromium-integration
-_commit=d5fe10747c1ee8e189b1bc51fc25379583c52db5
+_commit=85e4de77dc7a00ea86b4965265b59aff6cf76eb2
 pkgver=1.0.0
-pkgrel=1
+pkgrel=2
 arch=(any)
 url="https://www.chromium.org/"
 pkgdesc="Integration for Chromium flatpak configuration"
