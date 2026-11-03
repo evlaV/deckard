@@ -1,10 +1,10 @@
 pkgname=deckard-chromium-integration
-_commit=85e4de77dc7a00ea86b4965265b59aff6cf76eb2
+_commit=ef7cf99519a351d110b2e0a0f25d01d7aba41ecf
 pkgver=1.0.0
-pkgrel=2
+pkgrel=3
 arch=(any)
 url="https://www.chromium.org/"
-pkgdesc="Integration for Chromium flatpak configuration"
+pkgdesc="Integration for Chromium/Chrome flatpak configuration"
 source=(
     "git+https://github.com/evlav/deckard-chromium-integration.git#commit=$_commit"
 )
