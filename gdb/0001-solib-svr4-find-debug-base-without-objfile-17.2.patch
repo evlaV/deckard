@@ -1,0 +1,19 @@
+--- a/gdb/solib-svr4.c
++++ b/gdb/solib-svr4.c
+@@ -3636,12 +3636,10 @@
+   if (solib == nullptr)
+     return 0;
+ 
+-  /* This is always called for solibs with an associated objfile.  */
+-  gdb_assert (solib->objfile != nullptr);
+-
+-  svr4_info *info = get_svr4_info (solib->objfile->pspace ());
+-  gdb_assert (info != nullptr);
+-
++  /* The debug base comes from the link map, not the objfile, so this also
++     works for solibs whose objfile could not be loaded (e.g. a PE module of
++     another architecture that Wine lists in the link map).  info
++     sharedlibrary calls this for every solib through find_solib_ns.  */
+   auto &lm_info = get_lm_info_svr4 (*solib);
+ 
+   return lm_info.debug_base;

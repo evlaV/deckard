@@ -1,0 +1,121 @@
+# Maintainer: Levente Polyak <anthraxx[at]archlinux[dot]org>
+# Maintainer: Anatol Pomozov <anatol.pomozov@gmail.com>
+# Maintainer: Christian Heusel <gromit@archlinux.org>
+# Contributor: Allan McRae <allan@archlinux.org>
+# Contributor: Jan de Groot <jgc@archlinux.org>
+
+# Holo: 17.2 plus a fix for "info sharedlibrary" hitting an internal error
+# when attached to Proton/FEX games, until it is fixed upstream.
+
+pkgbase=gdb
+pkgname=(gdb gdb-common)
+pkgver=17.2
+pkgrel=1
+pkgdesc='The GNU Debugger'
+arch=(x86_64 aarch64)
+url='https://www.gnu.org/software/gdb/'
+license=(GPL-3.0-or-later LGPL-3.0-or-later)
+makedepends=(
+  bash
+  boost
+  expat
+  glibc
+  gmp
+  guile
+  libgcc
+  mpfr
+  ncurses
+  python
+  readline
+  source-highlight
+  texinfo
+  xxhash
+  xz
+  zstd
+)
+source=(
+  https://ftp.gnu.org/gnu/gdb/${pkgname}-${pkgver}.tar.xz{,.sig}
+  0001-solib-svr4-find-debug-base-without-objfile-17.2.patch
+)
+sha1sums=('4a4db2ba512fc30b4ff9129df5efa8524df3588f'
+          'SKIP'
+          '8477285ac524f7fac53c3966c2d94b9656988f2c')
+b2sums=('3c6c893e1d26d534918fb07b64f2e5b368825a64f888171f07443c5ebed456e7c26ed223d78bf304ee5f145c6f3c08c790c993c7b955d168e2fd8e656c6e1e9a'
+        'SKIP'
+        'f95560e5f21ef54fc8fb007d502c6fb4d8895bb637e247fe63f9bbc539a51da9cc213e8a913dc6fce98fe47b21d537a211f9779c995e6c1d1e95a0abb0fad3c8')
+validpgpkeys=('F40ADB902B24264AA42E50BF92EDB04BFF325CF3') # Joel Brobecker
+
+prepare() {
+  cd gdb-$pkgver
+
+  # Holo
+  patch -Np1 -i ../0001-solib-svr4-find-debug-base-without-objfile-17.2.patch
+}
+
+build() {
+  cd gdb-$pkgver
+
+  mkdir -p build && cd build
+  ../configure \
+    --prefix=/usr \
+    --disable-nls \
+    --enable-source-highlight \
+    --enable-tui \
+    --enable-targets=all \
+    --enable-languages=all \
+    --enable-multilib \
+    --enable-interwork \
+    --with-system-readline \
+    --with-python=/usr/bin/python \
+    --with-system-gdbinit=/etc/gdb/gdbinit
+  make
+}
+
+package_gdb-common() {
+  depends=(python guile)
+
+  cd gdb-$pkgver/build
+  make -C gdb/data-directory DESTDIR="$pkgdir" install
+}
+
+package_gdb() {
+  depends=(
+    bash
+    boost-libs
+    expat
+    gcc-libs
+    gdb-common=$pkgver
+    glibc
+    gmp
+    guile
+    libelf
+    liblzma.so
+    libmpfr.so
+    libncursesw.so
+    libreadline.so
+    libxxhash.so
+    libzstd.so
+    mpfr
+    ncurses
+    python
+    readline
+    source-highlight
+    xxhash
+    xz
+    zstd
+  )
+  backup=(etc/gdb/gdbinit)
+
+  cd gdb-$pkgver/build
+  make -C gdb DESTDIR="$pkgdir" install
+  make -C gdbserver DESTDIR="$pkgdir" install
+
+  # install "custom" system gdbinit
+  install -dm 755 "$pkgdir/etc/gdb"
+  touch "$pkgdir/etc/gdb/gdbinit"
+
+  # comes from gdb-common
+  rm -r "$pkgdir/usr/share/gdb/"
+}
+
+# vim: ts=2 sw=2 et:
