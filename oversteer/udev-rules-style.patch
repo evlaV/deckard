@@ -1,0 +1,56 @@
+diff -ruN a/data/udev/99-fanatec-wheel-perms.rules b/data/udev/99-fanatec-wheel-perms.rules
+--- a/data/udev/99-fanatec-wheel-perms.rules	2026-11-06 13:55:01.751894361 -0800
++++ b/data/udev/99-fanatec-wheel-perms.rules	2026-11-06 13:55:01.755598711 -0800
+@@ -8,7 +8,7 @@
+ GOTO="fanatec_end"
+ 
+ LABEL="ftec_module_settings"
+-RUN+="/bin/sh -c 'cd %S%p; chmod 666 range display load rumble leds/*/brightness tuning_menu/*"
++RUN+="/bin/sh -c 'cd %S%p; chmod 666 range display load rumble leds/*/brightness tuning_menu/*'"
+ GOTO="fanatec_end"
+ 
+ LABEL="ftec_input_settings"
+diff -ruN a/data/udev/99-logitech-wheel-perms.rules b/data/udev/99-logitech-wheel-perms.rules
+--- a/data/udev/99-logitech-wheel-perms.rules	2026-11-06 13:55:01.751956347 -0800
++++ b/data/udev/99-logitech-wheel-perms.rules	2026-11-06 13:55:01.754359172 -0800
+@@ -4,13 +4,13 @@
+ # Avoid blanket matching all Logitech devices, as that causes issues with mice,
+ # keyboards, and other non-wheel devices.
+ 
+-ACTION!="unbind", ACTION!="remove", SUBSYSTEM=="hid", ATTRS{idVendor}=="046d" GOTO="logitech-rules"
++ACTION!="unbind", ACTION!="remove", SUBSYSTEM=="hid", ATTRS{idVendor}=="046d", GOTO="logitech-rules"
+ GOTO="end"
+ 
+ LABEL="logitech-rules"
+ 
+-DRIVER=="logitech" GOTO="logitech-driver"
+-DRIVER!="logitech-hidpp-device" GOTO="end"
++DRIVER=="logitech", GOTO="logitech-driver"
++DRIVER!="logitech-hidpp-device", GOTO="end"
+ 
+ # Logitech G PRO Racing Wheel for Xbox One and PC
+ ATTRS{idProduct}=="c272", RUN+="/bin/sh -c 'cd %S%p; chmod 666 range leds/*/brightness; chmod 777 leds/ leds/*'"
+diff -ruN a/data/udev/99-thrustmaster-wheel-perms.rules b/data/udev/99-thrustmaster-wheel-perms.rules
+--- a/data/udev/99-thrustmaster-wheel-perms.rules	2026-11-06 13:55:01.751983588 -0800
++++ b/data/udev/99-thrustmaster-wheel-perms.rules	2026-11-06 13:55:01.754491590 -0800
+@@ -4,15 +4,15 @@
+ # Avoid blanket matching all Thrustmaster devices, as that causes issues with mice,
+ # keyboards, and other non-wheel devices.
+ 
+-ACTION!="unbind", ACTION!="remove", SUBSYSTEM=="hid", ATTRS{idVendor}=="044f" GOTO="thrustmaster-rules"
++ACTION!="unbind", ACTION!="remove", SUBSYSTEM=="hid", ATTRS{idVendor}=="044f", GOTO="thrustmaster-rules"
+ GOTO="end"
+ 
+ LABEL="thrustmaster-rules"
+ 
+-DRIVER=="tmff2" GOTO="tmff-new"
+-DRIVER=="hid-tmff-new" GOTO="tmff-new"
+-DRIVER=="hid-t150" GOTO="t150"
+-DRIVER!="t500rs" GOTO="end"
++DRIVER=="tmff2", GOTO="tmff-new"
++DRIVER=="hid-tmff-new", GOTO="tmff-new"
++DRIVER=="hid-t150", GOTO="t150"
++DRIVER!="t500rs", GOTO="end"
+ 
+ # Thrustmaster T500RS Racing Wheel (USB)
+ ATTRS{idProduct}=="b65e", DRIVER=="t500rs", RUN+="/bin/sh -c 'cd %S%p; chmod 666 range gain spring_level damper_level friction_level'"

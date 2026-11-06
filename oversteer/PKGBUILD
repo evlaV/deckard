@@ -5,7 +5,7 @@
 pkgbase=oversteer
 pkgname=(oversteer oversteer-udev)
 pkgver=0.8.3
-pkgrel=3.2
+pkgrel=3.3
 pkgdesc='Graphical application to configure Logitech Wheels'
 arch=(any)
 url=https://github.com/berarma/oversteer
@@ -29,8 +29,18 @@ _pydepends=(
 # meson.build refuses to configure unless the runtime Python modules are
 # importable, so they're needed to build too.
 makedepends=(gettext meson "${_pydepends[@]}")
-source=(${pkgbase}-${pkgver}.tar.gz::${url}/archive/v${pkgver}.tar.gz)
-b2sums=('30cc41e000a67d52a7f759019d97fb5a5f2d031de278ac026e623cbed2a020df9141cac1fe41ee1a30ab14c7c2846bdbb31d0165badac45c95c25750721a9ebb')
+source=(
+  ${pkgbase}-${pkgver}.tar.gz::${url}/archive/v${pkgver}.tar.gz
+  udev-rules-style.patch
+)
+b2sums=('30cc41e000a67d52a7f759019d97fb5a5f2d031de278ac026e623cbed2a020df9141cac1fe41ee1a30ab14c7c2846bdbb31d0165badac45c95c25750721a9ebb'
+        '6e45d17a5f859f50c1421a694e7604ccbbbb82d4a849880011cbbb3bfd8f7de64e46b434a852200f45ba6955f2a1a2fc40190442d26dfc3fe48e317578f1d311')
+
+prepare() {
+  cd ${pkgbase}-${pkgver}
+
+  patch -Np1 -i ../udev-rules-style.patch
+}
 
 build() {
   cd ${pkgbase}-${pkgver}
@@ -45,16 +55,17 @@ package_oversteer() {
   cd ${pkgbase}-${pkgver}
 
   DESTDIR="${pkgdir}" ninja -C build install
-  rm "${pkgdir}"/usr/lib/udev/rules.d/99-logitech-wheel-perms.rules
+  rm -r "${pkgdir}"/usr/lib/udev
 }
 
-# Holo: the image ships only these rules and leaves the oversteer app to Flathub, whose
+# Holo: the image ships only these rules and leaves the app to Flathub, whose
 # sandbox can't install udev rules.
 package_oversteer-udev() {
-  pkgdesc='udev rules that let users change Logitech racing wheel settings'
+  pkgdesc='udev rules that let users change racing wheel settings'
 
   cd ${pkgbase}-${pkgver}
 
-  install -Dm644 data/udev/99-logitech-wheel-perms.rules \
-    "${pkgdir}"/usr/lib/udev/rules.d/99-logitech-wheel-perms.rules
+  install -Dm644 -t "${pkgdir}"/usr/lib/udev/rules.d data/udev/*.rules
 }
+
+# vim: ts=2 sw=2 et:
