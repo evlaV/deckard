@@ -2,9 +2,10 @@
 # Maintainer: Brody <archfan at brodix dot de>
 # Contributor: Darvin Delgado <dnmodder@gmail.com>
 
-pkgname=oversteer
+pkgbase=oversteer
+pkgname=(oversteer oversteer-udev)
 pkgver=0.8.3
-pkgrel=3.1
+pkgrel=3.2
 pkgdesc='Graphical application to configure Logitech Wheels'
 arch=(any)
 url=https://github.com/berarma/oversteer
@@ -12,8 +13,11 @@ license=(GPL-3.0-or-later)
 # Holo: appstream-glib and desktop-file-utils only provide optional meson
 # tests, and gettext is only needed to merge translations at build time.
 # appstream-glib isn't in our repos.
-depends=(
-  python
+# Installs into python3.14/site-packages, so it must be rebuilt for a new
+# Python minor version.
+_pydepends=(
+  'python>=3.14'
+  'python<3.15'
   python-cairo
   python-evdev
   python-gobject
@@ -22,21 +26,35 @@ depends=(
   python-pyxdg
   python-scipy
 )
-makedepends=(gettext meson)
-source=(${pkgname}-${pkgver}.tar.gz::${url}/archive/v${pkgver}.tar.gz)
+# meson.build refuses to configure unless the runtime Python modules are
+# importable, so they're needed to build too.
+makedepends=(gettext meson "${_pydepends[@]}")
+source=(${pkgbase}-${pkgver}.tar.gz::${url}/archive/v${pkgver}.tar.gz)
 b2sums=('30cc41e000a67d52a7f759019d97fb5a5f2d031de278ac026e623cbed2a020df9141cac1fe41ee1a30ab14c7c2846bdbb31d0165badac45c95c25750721a9ebb')
 
 build() {
-  cd ${pkgname}-${pkgver}
+  cd ${pkgbase}-${pkgver}
 
   meson setup build --prefix=/usr
   ninja -C build
 }
 
-package() {
-  cd ${pkgname}-${pkgver}
+package_oversteer() {
+  depends=("${_pydepends[@]}" oversteer-udev)
+
+  cd ${pkgbase}-${pkgver}
 
   DESTDIR="${pkgdir}" ninja -C build install
+  rm "${pkgdir}"/usr/lib/udev/rules.d/99-logitech-wheel-perms.rules
 }
 
-# vim: ts=2 sw=2 et:
+# Holo: the image ships only these rules and leaves the oversteer app to Flathub, whose
+# sandbox can't install udev rules.
+package_oversteer-udev() {
+  pkgdesc='udev rules that let users change Logitech racing wheel settings'
+
+  cd ${pkgbase}-${pkgver}
+
+  install -Dm644 data/udev/99-logitech-wheel-perms.rules \
+    "${pkgdir}"/usr/lib/udev/rules.d/99-logitech-wheel-perms.rules
+}
