@@ -7,7 +7,7 @@
 # Contributor: Valentine Sinitsyn <e_val@inbox.ru>
 
 pkgbase=networkmanager
-_commit=c7466ba0bd03f6bf3517fcd0494a00cbc302cb15
+_commit=cc35360ec5ba3040859aa62825e2d042c2396584
 pkgname=(
   networkmanager
   libnm
@@ -15,7 +15,7 @@ pkgname=(
   networkmanager-docs
 )
 pkgver=1.52.1
-pkgrel=1.6
+pkgrel=1.7
 pkgdesc="Network connection manager and user applications"
 url="https://networkmanager.dev/"
 arch=(x86_64)
