@@ -1,0 +1,78 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Matthieu Bucchianeri <mbucchia@valvesoftware.com>
+Date: Fri, 6 Nov 2026 14:49:02 -0800
+Subject: [PATCH] dir: Also load user overrides from /var/run/flatpak/overrides
+
+Per-user overrides are read from $XDG_DATA_HOME/flatpak/overrides. Also
+read the same files from /var/run/flatpak/overrides, so overrides can be
+provided for the current boot without writing to the user's home
+directory.
+
+The /var/run overrides are loaded first and the user's own overrides
+are merged on top, so `flatpak override --user` still wins. Like the
+user's overrides, a missing file is ignored and a malformed one fails
+the launch.
+---
+ common/flatpak-dir.c | 31 ++++++++++++++++++++++++++++++-
+ 1 file changed, 30 insertions(+), 1 deletion(-)
+
+diff --git a/common/flatpak-dir.c b/common/flatpak-dir.c
+index 4cfd8de..a005a02 100644
+--- a/common/flatpak-dir.c
++++ b/common/flatpak-dir.c
+@@ -2914,6 +2914,28 @@ flatpak_load_override_keyfile (const char *app_id, gboolean user, GError **error
+   return g_steal_pointer (&metakey);
+ }
+ 
++/* Per-user overrides set up for this boot, applied beneath the user's own. */
++#define FLATPAK_RUNTIME_OVERRIDES_DIR "/var/run/flatpak/overrides"
++
++static gboolean
++load_runtime_override (FlatpakContext *overrides, const char *app_id, GError **error)
++{
++  g_autofree char *path = g_build_filename (FLATPAK_RUNTIME_OVERRIDES_DIR, app_id ? app_id : "global", NULL);
++  g_autoptr(GKeyFile) metakey = g_key_file_new ();
++  g_autoptr(GError) my_error = NULL;
++
++  if (!g_key_file_load_from_file (metakey, path, G_KEY_FILE_NONE, &my_error))
++    {
++      if (g_error_matches (my_error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
++        return TRUE;
++
++      g_propagate_prefixed_error (error, g_steal_pointer (&my_error), "%s: ", path);
++      return FALSE;
++    }
++
++  return flatpak_context_load_metadata (overrides, metakey, error);
++}
++
+ FlatpakContext *
+ flatpak_load_override_file (const char *app_id, gboolean user, GError **error)
+ {
+@@ -2921,6 +2943,9 @@ flatpak_load_override_file (const char *app_id, gboolean user, GError **error)
+   g_autoptr(GKeyFile) metakey = NULL;
+   g_autoptr(GError) my_error = NULL;
+ 
++  if (user && !load_runtime_override (overrides, app_id, error))
++    return NULL;
++
+   metakey = flatpak_load_override_keyfile (app_id, user, &my_error);
+   if (metakey == NULL)
+     {
+@@ -2932,8 +2957,12 @@ flatpak_load_override_file (const char *app_id, gboolean user, GError **error)
+     }
+   else
+     {
+-      if (!flatpak_context_load_metadata (overrides, metakey, error))
++      g_autoptr(FlatpakContext) file_overrides = flatpak_context_new ();
++
++      if (!flatpak_context_load_metadata (file_overrides, metakey, error))
+         return NULL;
++
++      flatpak_context_merge (overrides, file_overrides);
+     }
+ 
+   return g_steal_pointer (&overrides);
+-- 
+2.53.0
+
