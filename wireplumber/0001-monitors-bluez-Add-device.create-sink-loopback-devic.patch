@@ -1,0 +1,126 @@
+From ccc7d24cc1ee4f041cecfd91b1ddc4426e75a56b Mon Sep 17 00:00:00 2001
+From: Julian Bouzas <julian.bouzas@collabora.com>
+Date: Mon, 2 Nov 2026 12:42:12 -0500
+Subject: [PATCH] monitors/bluez: Add 'device.create-sink-loopback' device
+ property
+
+Add a device property that exposes the sink of Bluetooth devices through
+a loopback node, instead of the actual sink node that is recreated every
+time the profile changes. This allows smart filters to be linked between
+the loopback and the actual sink node, hidden from applications. It is
+disabled by default.
+---
+ .../monitors/bluez/create-loopback-node.lua   | 59 +++++++++++++++++++
+ src/scripts/monitors/bluez/create-node.lua    |  6 ++
+ 2 files changed, 65 insertions(+)
+
+diff --git a/src/scripts/monitors/bluez/create-loopback-node.lua b/src/scripts/monitors/bluez/create-loopback-node.lua
+index 70f9cc1f..88a7fd50 100644
+--- a/src/scripts/monitors/bluez/create-loopback-node.lua
++++ b/src/scripts/monitors/bluez/create-loopback-node.lua
+@@ -11,7 +11,9 @@ mutils = require ("monitor-utils")
+ log = Log.open_topic ("s-monitors-bluez")
+ 
+ LOOPBACK_SOURCE_ID = 128
++LOOPBACK_SINK_ID = 129
+ DEVICE_SOURCE_ID = 0
++DEVICE_SINK_ID = 1
+ 
+ function CreateDeviceLoopbackSource (dev_props, dev_id)
+   local dev_name = dev_props["api.bluez5.address"] or dev_props["device.name"]
+@@ -57,6 +59,48 @@ function CreateDeviceLoopbackSource (dev_props, dev_id)
+   return LocalModule("libpipewire-module-loopback", args:get_data(), {})
+ end
+ 
++function CreateDeviceLoopbackSink (dev_props, dev_id)
++  local dev_name = dev_props["api.bluez5.address"] or dev_props["device.name"]
++  local dec_desc = dev_props["device.description"] or dev_props["device.name"]
++      or dev_props["device.nick"] or dev_props["device.alias"] or "bluetooth-device"
++  local target_object = mutils.get_bluez_node_name ("bluez_output",
++      dev_props["api.bluez5.address"], dev_props["device.name"], DEVICE_SINK_ID)
++
++  -- sanitize description, replace ':' with ' '
++  dec_desc = dec_desc:gsub("(:)", " ")
++
++  log:info("create sink loopback node: " .. dev_name)
++
++  local args = Json.Object {
++    ["audio.position"] = "[FL, FR]",
++    ["capture.props"] = Json.Object {
++      ["node.name"] = string.format ("bluez_output.%s", dev_name),
++      ["node.description"] = string.format ("%s", dec_desc),
++      ["node.virtual"] = false,
++      ["audio.position"] = "[FL, FR]",
++      ["media.class"] = "Audio/Sink",
++      ["device.id"] = dev_id,
++      ["card.profile.device"] = DEVICE_SINK_ID,
++      ["device.routes"] = "1",
++      ["priority.session"] = 1010,
++      ["bluez5.loopback"] = true,
++    },
++    ["playback.props"] = Json.Object {
++      ["node.name"] = string.format ("bluez_playback_internal.%s", dev_name),
++      ["media.class"] = "Stream/Output/Audio/Internal",
++      ["node.description"] =
++          string.format ("Bluetooth internal playback stream for %s", dec_desc),
++      ["bluez5.loopback"] = true,
++      ["node.passive"] = true,
++      ["node.dont-fallback"] = true,
++      ["node.linger"] = true,
++      ["state.restore-props"] = false,
++      ["target.object"] = target_object,
++    }
++  }
++  return LocalModule("libpipewire-module-loopback", args:get_data(), {})
++end
++
+ SimpleEventHook {
+   name = "monitor/bluez/create-loopback-node",
+   interests = {
+@@ -76,11 +120,26 @@ SimpleEventHook {
+ 
+     -- Check if the device supports headset profile
+     local has_headset_profile = false
++    local has_sink_profile = false
+     for p in spa_device:iterate_params("EnumProfile") do
+       local profile = cutils.parseParam (p, "EnumProfile")
+       if profile.name:find ("headset") then
+         has_headset_profile = true
+       end
++      if profile.name:find ("^a2dp%-sink") or
++          profile.name:find ("^headset%-head%-unit") then
++        has_sink_profile = true
++      end
++    end
++
++    -- The sink loopback outlives profile changes, as the sink node is recreated
++    -- with the same name on each of them
++    if has_sink_profile and
++        props:get_boolean ("device.create-sink-loopback") and
++        spa_device:get_managed_object (LOOPBACK_SINK_ID) == nil then
++      spa_device:store_managed_object (LOOPBACK_SINK_ID,
++          CreateDeviceLoopbackSink (props, device_id))
++      log:debug (spa_device, "created loopback sink for BT device: " .. device_name)
+     end
+ 
+     if has_headset_profile then
+diff --git a/src/scripts/monitors/bluez/create-node.lua b/src/scripts/monitors/bluez/create-node.lua
+index 6e6504b5..073535e9 100644
+--- a/src/scripts/monitors/bluez/create-node.lua
++++ b/src/scripts/monitors/bluez/create-node.lua
+@@ -36,6 +36,12 @@ AsyncEventHook {
+           end
+         end
+ 
++        if (factory == "api.bluez5.a2dp.sink" or factory == "api.bluez5.sco.sink") and
++            properties["api.bluez5.profile"] ~= "headset-audio-gateway" and
++            parent.properties:get_boolean ("device.create-sink-loopback") then
++          properties["api.bluez5.internal"] = true
++        end
++
+         log:info("Create node: " .. properties["node.name"] .. ": " .. factory .. " " .. tostring (id))
+ 
+         -- Create the node
+-- 
+2.53.0
+

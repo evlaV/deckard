@@ -9,7 +9,7 @@ pkgname=(
   wireplumber-docs
 )
 pkgver=0.5.18
-pkgrel=4
+pkgrel=5
 pkgdesc="Session / policy manager implementation for PipeWire"
 url="https://pipewire.pages.freedesktop.org/wireplumber/"
 arch=(x86_64 aarch64)
@@ -59,6 +59,9 @@ source=(
 
   # Holo: backport of https://gitlab.freedesktop.org/pipewire/wireplumber/-/merge_requests/922
   "0001-linking-Avoid-linking-new-streams-before-smart-filte.patch"
+
+  # Adds the device.create-sink-loopback property to BT devices to AEC on them
+  "0001-monitors-bluez-Add-device.create-sink-loopback-devic.patch"
 )
 
 b2sums=('eea6a3e022c0b8918a72b56a9cdb1c02bca4411a9394fc2a8732faad2c0c71d1443b2a37b22e60467aaab62c154150d18b185b2690271d1d4830dee6513e2e8c'
@@ -72,7 +75,8 @@ b2sums=('eea6a3e022c0b8918a72b56a9cdb1c02bca4411a9394fc2a8732faad2c0c71d1443b2a3
         '3ce6f28aedef5603f05ebeb5360cbe71b7d714d9d82c68d680cebbd7e1e33ca898b4b1039959e877f38b6895be2aaaf9d769f1d3d9ea9054571086a80fdbc428'
         '919e6a7954dfe75a1557fa433a6accbc8d64d5cfa716c54b9f015871b2a230747cc59bcc775b642e5d5cab0c4c09a64c6857ec64f7cdaea783db9cc67e7baae5'
         'b0189b00cc0b40a25f2c0bdf4b3d0d3764504137e770e867e4f3895f677e0ae2ebbe4c011ac0ca276c7f67dfbb1062d8a8c507fbf71850e0bf9c631308580616'
-        '247dc6ebfc4ecd540e1bfa0b3e3ab1615299dbc31a0c5c7b8e71d9626898b6e82a1ac39733847a532c9cbd133cc17d5edec165d533f22cf33f9138e7db0cc1f6')
+        '247dc6ebfc4ecd540e1bfa0b3e3ab1615299dbc31a0c5c7b8e71d9626898b6e82a1ac39733847a532c9cbd133cc17d5edec165d533f22cf33f9138e7db0cc1f6'
+        'dada025027af0359430ca6b595a8cd22d78ac2cd4861912d765a17ae6972af64bc1a5f96eb4e28bce757d158598c791bb4bcee94828f9dbb7a6cd9e16a4d5d50')
 
 prepare() {
   cd $pkgbase
