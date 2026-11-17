@@ -1,5 +1,5 @@
 # When you update these values, reset `_pkgrel` below to `1`
-_commit=96085eb0752e2db1d1399f17e8b9f742989e7ada
+_commit=eab682c61d6beb74d1d72eefc6fed2b8cd2588be
 _pkgver=7.2.0+g${_commit:0:12}
 _pkgrel=1
 
