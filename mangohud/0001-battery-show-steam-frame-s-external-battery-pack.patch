@@ -1,0 +1,251 @@
+From 09cedbb3565d68a3bc1ea0f5b10f881258beeceb Mon Sep 17 00:00:00 2001
+From: Drew Gottlieb <drewg@valvesoftware.com>
+Date: Mon, 16 Nov 2026 15:21:26 -0800
+Subject: [PATCH] battery: show Steam Frame's external battery pack
+
+With the Boulder head strap, Steam Frame can also run on an external
+battery pack. deckard-charger writes the pack's level and status to
+/run/deckardcharger, but battery_percent and battery_status only cover
+the internal battery.
+
+While a pack is attached, show a BATT (EXT) row (EXT inline) under
+BATT with its level, plus the plug icon while USB is charging it, or
+its remaining time while it's discharging.
+
+The remaining time summed both batteries' charge over their average
+current, counting the internal battery's charging current as drain. On
+Steam Frame, show each battery's time from deckard-charger instead, as
+Steam does. The internal battery has none while the pack runs the
+headset.
+---
+ src/battery.cpp      |  23 ++++++++
+ src/battery.h        |   6 +++
+ src/hud_elements.cpp | 126 ++++++++++++++++++++++++++-----------------
+ 3 files changed, 107 insertions(+), 48 deletions(-)
+
+diff --git a/src/battery.cpp b/src/battery.cpp
+index b6b910a..aa2d9ba 100644
+--- a/src/battery.cpp
++++ b/src/battery.cpp
+@@ -57,9 +57,27 @@ void BatteryStats::update() {
+         current_watt = getPower();
+         current_percent = getPercent();
+         remaining_time = getTimeRemaining();
++        updateExternal();
+     }
+ }
+ 
++// deckard-charger only writes these with the Boulder head strap
++void BatteryStats::updateExternal() {
++    external_present = read_line("/run/deckardcharger/external_battery_present") == "1";
++    if (!external_present)
++        return;
++
++    float percent = 0.0f;
++    if (try_stof(percent, read_line("/run/deckardcharger/external_battery_percent")))
++        external_percent = percent;
++    external_status = read_line("/run/deckardcharger/external_battery_status");
++
++    float secs = 0.0f;
++    external_remaining_time = -1.0f;
++    if (try_stof(secs, read_line("/run/deckardcharger/external_secs_until_shutdown_request")) && secs > 0)
++        external_remaining_time = secs / 3600.0f;
++}
++
+ float BatteryStats::getPercent()
+ {
+     float charge_n = 0;
+@@ -207,6 +225,11 @@ float BatteryStats::getPower() {
+ }
+ 
+ float BatteryStats::getTimeRemaining() {
++    // On Steam Frame, show the same time Steam does. It's -1 while the internal battery isn't powering the headset (e.g. the external pack is).
++    float deckard_secs = 0.0f;
++    if (try_stof(deckard_secs, read_line("/run/deckardcharger/secs_until_shutdown_request")))
++        return deckard_secs < 0 ? -1.0f : deckard_secs / 3600.0f;
++
+     float current = 0.0f;
+     float charge = 0.0f;
+ 
+diff --git a/src/battery.h b/src/battery.h
+index 47312bd..eb92665 100644
+--- a/src/battery.h
++++ b/src/battery.h
+@@ -7,6 +7,7 @@ class BatteryStats{
+     public:
+         void numBattery();
+         void update();
++        void updateExternal();
+         float getPower();
+         float getPercent();
+         float getTimeRemaining();
+@@ -19,6 +20,11 @@ class BatteryStats{
+         int batt_count=0;
+         bool batt_check = false;
+         std::vector<float> current_now_vec = {};
++        // Steam Frame's external battery pack
++        bool external_present = false;
++        float external_percent = 0;
++        float external_remaining_time = -1;
++        std::string external_status;
+ };
+ 
+ extern BatteryStats Battery_Stats;
+diff --git a/src/hud_elements.cpp b/src/hud_elements.cpp
+index 530d4d1..713d220 100644
+--- a/src/hud_elements.cpp
++++ b/src/hud_elements.cpp
+@@ -1240,6 +1240,58 @@ void HudElements::vkbasalt(){
+     }
+ }
+ 
++static void battery_level(float percent){
++    if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_battery_icon]) {
++        switch(int(percent)){
++            case 0 ... 33:
++                right_aligned_text(HUDElements.colors.text, HUDElements.ralign_width, "%s", ICON_FK_BATTERY_QUARTER);
++                break;
++            case 34 ... 66:
++                right_aligned_text(HUDElements.colors.text, HUDElements.ralign_width, "%s", ICON_FK_BATTERY_HALF);
++                break;
++            case 67 ... 97:
++                right_aligned_text(HUDElements.colors.text, HUDElements.ralign_width, "%s", ICON_FK_BATTERY_THREE_QUARTERS);
++                break;
++            case 98 ... 100:
++                right_aligned_text(HUDElements.colors.text, HUDElements.ralign_width, "%s", ICON_FK_BATTERY_FULL);
++                break;
++        }
++    }
++    else {
++        right_aligned_text(HUDElements.colors.text, HUDElements.ralign_width, "%.0f", percent);
++        ImGui::SameLine(0,1.0f);
++        HUDElements.TextColored(HUDElements.colors.text, "%%");
++    }
++}
++
++static void battery_time(float remaining_time){
++    float hours;
++    float minutes;
++    minutes = std::modf(remaining_time, &hours);
++    minutes *= 60;
++    char time_buffer[32];
++    snprintf(time_buffer, sizeof(time_buffer), "%02d:%02d", static_cast<int>(hours), static_cast<int>(minutes));
++
++    if (!HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_horizontal] && !HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_hud_compact]){
++        ImGui::TableNextRow();
++        ImGui::NextColumn();
++        ImGui::PushFont(HUDElements.sw_stats->font_small);
++        ImGuiTableSetColumnIndex(0);
++        HUDElements.TextColored(HUDElements.colors.text, "%s", "Remaining Time");
++        ImGui::PopFont();
++        ImGuiTableSetColumnIndex(2);
++    } else {
++        if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_horizontal])
++            ImguiNextColumnOrNewRow();
++
++        ImguiNextColumnOrNewRow();
++    }
++    if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_hud_compact])
++        ImGuiTableSetColumnIndex(0);
++
++    right_aligned_text(HUDElements.colors.text, HUDElements.ralign_width, "%s", time_buffer);
++}
++
+ void HudElements::battery(){
+ #ifdef __linux__
+     if (Battery_Stats.batt_count > 0) {
+@@ -1250,27 +1302,7 @@ void HudElements::battery(){
+             else
+                 HUDElements.TextColored(HUDElements.colors.battery, "BATT");
+             ImguiNextColumnOrNewRow();
+-            if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_battery_icon]) {
+-                switch(int(Battery_Stats.current_percent)){
+-                    case 0 ... 33:
+-                        right_aligned_text(HUDElements.colors.text, HUDElements.ralign_width, "%s", ICON_FK_BATTERY_QUARTER);
+-                        break;
+-                    case 34 ... 66:
+-                        right_aligned_text(HUDElements.colors.text, HUDElements.ralign_width, "%s", ICON_FK_BATTERY_HALF);
+-                        break;
+-                    case 67 ... 97:
+-                        right_aligned_text(HUDElements.colors.text, HUDElements.ralign_width, "%s", ICON_FK_BATTERY_THREE_QUARTERS);
+-                        break;
+-                    case 98 ... 100:
+-                        right_aligned_text(HUDElements.colors.text, HUDElements.ralign_width, "%s", ICON_FK_BATTERY_FULL);
+-                        break;
+-                }
+-            }
+-            else {
+-                right_aligned_text(HUDElements.colors.text, HUDElements.ralign_width, "%.0f", Battery_Stats.current_percent);
+-                ImGui::SameLine(0,1.0f);
+-                HUDElements.TextColored(HUDElements.colors.text, "%%");
+-            }
++            battery_level(Battery_Stats.current_percent);
+             if (Battery_Stats.current_watt != 0) {
+                 if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_battery_watt]){
+                     ImguiNextColumnOrNewRow();
+@@ -1283,37 +1315,35 @@ void HudElements::battery(){
+                     HUDElements.TextColored(HUDElements.colors.text, "W");
+                     ImGui::PopFont();
+                 }
+-                if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_battery_time]) {
+-                    float hours;
+-                    float minutes;
+-                    minutes = std::modf(Battery_Stats.remaining_time, &hours);
+-                    minutes *= 60;
+-                    char time_buffer[32];
+-                    snprintf(time_buffer, sizeof(time_buffer), "%02d:%02d", static_cast<int>(hours), static_cast<int>(minutes));
+-
+-                    if (!HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_horizontal] && !HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_hud_compact]){
+-                        ImGui::TableNextRow();
+-                        ImGui::NextColumn();
+-                        ImGui::PushFont(HUDElements.sw_stats->font_small);
+-                        ImGuiTableSetColumnIndex(0);
+-                        HUDElements.TextColored(HUDElements.colors.text, "%s", "Remaining Time");
+-                        ImGui::PopFont();
+-                        ImGuiTableSetColumnIndex(2);
+-                    } else {
+-                        if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_horizontal])
+-                            ImguiNextColumnOrNewRow();
+-
+-                        ImguiNextColumnOrNewRow();
+-                    }
+-                    if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_hud_compact])
+-                        ImGuiTableSetColumnIndex(0);
+-
+-                    right_aligned_text(HUDElements.colors.text, HUDElements.ralign_width, "%s", time_buffer);
+-                }
++                if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_battery_time] && Battery_Stats.remaining_time >= 0)
++                    battery_time(Battery_Stats.remaining_time);
+             } else {
+                 ImguiNextColumnOrNewRow();
+                 right_aligned_text(HUDElements.colors.text, HUDElements.ralign_width, "%s", ICON_FK_PLUG);
+             }
++
++            if (Battery_Stats.external_present) {
++                if (!HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_horizontal])
++                    ImGui::TableNextRow();
++                ImguiNextColumnFirstItem();
++                // Inline there's no separator between this and the BATT values, so the spaces set it apart.
++                if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_horizontal])
++                    HUDElements.TextColored(HUDElements.colors.battery, "  EXT");
++                else if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_hud_compact])
++                    HUDElements.TextColored(HUDElements.colors.battery, "EXT");
++                else
++                    HUDElements.TextColored(HUDElements.colors.battery, "BATT (EXT)");
++                ImguiNextColumnOrNewRow();
++                battery_level(Battery_Stats.external_percent);
++                // deckard-charger only reports these while USB power is attached
++                if (Battery_Stats.external_status == "Charging" || Battery_Stats.external_status == "Full") {
++                    ImguiNextColumnOrNewRow();
++                    right_aligned_text(HUDElements.colors.text, HUDElements.ralign_width, "%s", ICON_FK_PLUG);
++                } else if (Battery_Stats.external_status == "Discharging" && Battery_Stats.external_remaining_time > 0 &&
++                           HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_battery_time]) {
++                    battery_time(Battery_Stats.external_remaining_time);
++                }
++            }
+         }
+ 
+     }
+-- 
+2.53.0
+

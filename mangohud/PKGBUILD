@@ -4,7 +4,7 @@
 pkgname=('mangohud')
 _commit=e1430abaa024c57624661b99314ba8f2d4c06d03
 pkgver=0.8.4.r184.ge1430aba
-pkgrel=1
+pkgrel=2
 epoch=1
 pkgdesc="Vulkan and OpenGL overlay to display performance information"
 url="https://github.com/flightlessmango/MangoHud"
@@ -59,6 +59,8 @@ source=(
   # battery + charging state patches (https://github.com/flightlessmango/MangoHud/pull/2175)
   "0001-battery-use-deckardcharger-status-on-steam-frame.patch"
   "0002-battery-only-count-discharging-batteries-toward-drai.patch"
+  # Steam Frame external battery pack
+  "0001-battery-show-steam-frame-s-external-battery-pack.patch"
 )
 
 sha256sums=('SKIP'
@@ -71,7 +73,8 @@ sha256sums=('SKIP'
             '0fc376e1f01402730bd9239373d9d54e8044294dc5faefe32cb3d39ddbaa428c'
             'f640e446f0bce0792a696d6aade0668742b36621798c5ab93b3b3c222d35b0ec'
             'f7bcfa96748b3305b2f89800226cd4e79998ff8c3b06d0fc76ae594bd1656ddf'
-            '91ff7fd2f4a0e1cc49b4bc97426fd8975006ad1d968e4ce947335f8f25f9855d')
+            '91ff7fd2f4a0e1cc49b4bc97426fd8975006ad1d968e4ce947335f8f25f9855d'
+            '9b86fdb5571a6fe13b87b291b9a9d41cbb590442f35e4400ce66752c00491d31')
 
 # Get `download_git` available for use
 source /usr/share/makepkg/util/source.sh
