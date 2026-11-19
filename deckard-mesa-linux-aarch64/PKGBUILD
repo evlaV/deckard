@@ -65,7 +65,7 @@ build() {
     "${MESON_OPTIONS[@]}"
 
   # Print config
-  meson configure build
+  meson configure build --no-pager
   ninja -C build
 
   # Assert build
@@ -73,7 +73,7 @@ build() {
     --buildtype=debugoptimized \
     -D b_ndebug=false \
     "${MESON_OPTIONS[@]}"
-  meson configure build_assert
+  meson configure build_assert --no-pager
   ninja -C build_assert
 }
 
