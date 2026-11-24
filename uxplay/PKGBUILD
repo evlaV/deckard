@@ -1,0 +1,50 @@
+# Maintainer: Gabe Rowe <gaber@valvesoftware.com>
+pkgname=uxplay
+pkgver=1.74
+pkgrel=2
+_srccommit=fbd040e70e754e01fa7e6df810fecd08b6484ada
+pkgdesc='UxPlay screen mirroring and audio streaming receiver'
+arch=('x86_64' 'aarch64')
+url='https://github.com/FDH2/UxPlay'
+license=('GPL-3.0-or-later')
+depends=(
+  'avahi' 'dbus' 'gcc-libs' 'glibc' 'glib2' 'libplist' 'libx11' 'openssl'
+  'gstreamer' 'gst-plugins-base-libs' 'gst-plugins-base' 'gst-plugins-good'
+  'gst-plugins-bad' 'gst-libav'
+)
+makedepends=('cmake')
+source=("$pkgname-$_srccommit.tar.gz::https://codeload.github.com/FDH2/UxPlay/tar.gz/$_srccommit")
+sha512sums=('790776dc60682d45c903f51b39c9f9ac1e400ec55c4c506bedabfe05b0a223d36cff807e58323ae1ed74d572d88700ea8dbc2d3ed5a9baaff2e737518feac4a7')
+
+build() {
+  cmake -S "$srcdir/UxPlay-$_srccommit" -B "$srcdir/build" \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_BUILD_TYPE=None \
+    -DUSE_DNS_SD=ON
+  cmake --build "$srcdir/build"
+}
+
+package() {
+  DESTDIR="$pkgdir" cmake --install "$srcdir/build"
+
+  install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/uxplay.desktop" <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=UxPlay
+GenericName=UxPlay
+Comment=UxPlay video audio receiver
+Exec=/usr/bin/uxplay
+Icon=video-display
+Terminal=true
+Categories=AudioVideo;
+EOF
+
+#note you will need avahi-daemon running and have avahi-daemon.conf modified to have:
+#disable-publishing=no
+#disable-user-service-publishing=no
+#enable-dbus=yes
+
+#start uxplay within an X11 session with:
+#uxplay -n "linuxbox" -nh
+
+}
